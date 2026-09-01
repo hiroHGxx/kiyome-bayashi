@@ -401,7 +401,7 @@
     if (!litSet.has(r.darkId)) { litSet.add(r.darkId); litIds.push(r.darkId); }   // 浄めた柱は以後 色の札の側へ回る
     runTally.set(r.darkId, (runTally.get(r.darkId) || 0) + 1);
     rings.push({ cx: r.darkLane * LANE_W + LANE_W / 2, cy: r.y + ROW_H / 2, t: 0 });
-    if (purified === MANGAN) { manganAt = performance.now() - runStart; addFloat("満　願"); }
+    if (purified === MANGAN) { manganAt = performance.now() - runStart; addFloat("満　願"); playSe("end"); }
     else if (litSet.size === SPIRITS.length && purified < MANGAN) addFloat("満　天");
     updateHud();
   }
@@ -414,6 +414,7 @@
   /* ---- 夜の終わり ---- */
   const canSubmitScore = () => !practice && !AUTO && (purified > 0 || saveData.best > 0);   // 記録が無い人の0だけ送らない（宵あらわし式）
   function showGameOver(cleared) {
+    playSe("whiff");   // 夜明け（色の札を叩いた／取りこぼした・SPEC §5）
     $("final-rank").hidden = true; $("final-rank-mark").hidden = true; $("final-rank-line").hidden = true; $("final-rank-line").textContent = "";
     const won = !!cleared || purified >= MANGAN;
     const prevBest = saveData.best;   // 束を書き換える前に控える（自己最高の更新は SDK が無い夜でも出す）
@@ -567,6 +568,57 @@
     kotoStep++;
   }
   window.__koto = { scaleFreq, noteFreq, kotoWave, SCALE, KOTO_RING_S, get kotoStep() { return kotoStep; }, get ctxState() { return audioCtx ? audioCtx.state : null; } };   // 検証用
+
+  /* ---- 夜明け・満願の音（公式ミニゲームSE。琴と地続きの低音寄りの2本を選定・SPEC §5）----
+     どちらも200Hz未満に音圧の大半が集まる低音寄りの音（end: <400Hzが全体とほぼ同値、whiff: 同様）＝
+     Karplus-Strong弦の琴と質感が割れない。whiff は既存作でも一貫して「外した／誤タップ」の役なので、
+     色の札を叩く／取りこぼす＝夜明けの意味に素直。end は在庫中もっとも長く（1.76秒）低く、
+     満願（108枚）の締めに使う。
+     音量は「浄めの音（琴）が主役・夜明けと満願がその次」（依頼指定）。実測（Chromeのデコード後、
+     0.1秒窓RMSの最大値＝鳴った瞬間。sfxBus 0.9 込み）:
+       琴（一夜の平均）  -18.1dB（開始12音）／ -19.1dB（以後108枚のほとんどを占める反復5音）
+       whiff（夜明け）  SE_VOL=0.7 で -21.5dB／end（満願）  SE_VOL=0.4 で -20.2dB
+     どちらも琴の平均より2.6〜3.6dB下＝主役を食わない。ファイルは持たず assets/audio/ の2本
+     （whiff・end）のみ同梱。fetch は index.html（Pages）用の経路で、
+     dist/artifact.html は build-dist.js が window.AUDIO_DATA に base64 を注ぐ
+     （Artifact の CSP は fetch("data:") を通さない――他作の教訓。atob() 経由で読む）。 */
+  const SE_NAMES = ["whiff", "end"];   // build-dist.js もこの名前をそのまま読む（二重管理しない）
+  const SE_VOL = { whiff: 0.7, end: 0.4 };
+  const seBuf = {}, sePromise = {};
+  function b64ToBuf(b64) {
+    const bin = atob(b64), u8 = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    return u8.buffer;
+  }
+  function loadSe(name) {
+    if (sePromise[name]) return sePromise[name];
+    const a = getAudioCtx(); if (!a) return Promise.resolve(null);
+    sePromise[name] = new Promise((resolve) => {
+      const keep = (buf) => { seBuf[name] = buf; resolve(buf); };
+      const miss = () => resolve(null);
+      if (window.AUDIO_DATA && window.AUDIO_DATA[name]) { try { a.decodeAudioData(b64ToBuf(window.AUDIO_DATA[name]), keep, miss); } catch (e) { miss(); } return; }
+      fetch("assets/audio/" + name + ".m4a").then((r) => { if (!r.ok) throw 0; return r.arrayBuffer(); })
+        .then((ab) => a.decodeAudioData(ab, keep, miss)).catch(miss);
+    });
+    return sePromise[name];
+  }
+  const seCounts = { whiff: 0, end: 0 };   // 検証用（実プレイで狙った箇所から呼ばれたかを数える）
+  function playSe(name) {
+    if (!soundOn) return;
+    seCounts[name] = (seCounts[name] || 0) + 1;
+    const a = getAudioCtx(); if (!a) return;
+    const play = (buf) => {
+      if (!buf || !soundOn) return;
+      try {
+        const src = a.createBufferSource(); src.buffer = buf;
+        const g = a.createGain(); g.gain.value = SE_VOL[name];
+        src.connect(g); g.connect(sfxBus || a.destination);
+        src.start(a.currentTime);
+      } catch (e) {}
+    };
+    if (seBuf[name]) play(seBuf[name]); else loadSe(name).then(play);
+  }
+  window.__se = { SE_NAMES, SE_VOL, playSe, get loaded() { return SE_NAMES.every((n) => !!seBuf[n]); }, get counts() { return { ...seCounts }; } };   // 検証用
   function applySound() { $("mute").classList.toggle("off", !soundOn); }
   $("mute").addEventListener("click", () => { soundOn = !soundOn; saveData.sound = soundOn ? "on" : "off"; saveDirty = true; persistSave(); applySound(); });
 

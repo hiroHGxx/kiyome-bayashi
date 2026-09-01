@@ -181,3 +181,30 @@ index.html（Pages）は相対パスのまま動くので気づかず、**artifa
 
 → **`kitan-precheck` に検査を1項目足した**（2026-09-02）: 「生成物だけに書かれたコードが無い」＝
 `build-dist.js` を実際に走らせて `index.html` を作り直し、前後をバイトで比べる。変われば `src` に無い実装がある。
+
+## 2026-09-02 第2便（夜明け・満願の音／音量の釣り合い・音響担当）
+
+実装・実測は SPEC §5「夜明け・満願の音／音量の釣り合い」に書いた。ここには工程で踏んだ地雷だけ残す。
+
+- **公式SE9本のうち `whiff`（夜明け）・`end`（満願）だけ残し、残り7本は `assets/audio/` から削除した。**
+  リポジトリに置いてよいのは実際に鳴らす音だけ、という規約どおり
+- **Artifact版で `fetch("assets/audio/*.m4a")` をそのまま使うと、build-dist.js の既存正規表現
+  （`assets/(?:audio|art|fuda)/...` を丸ごと data:URI に置換）が fetch の引数の文字列まで書き換えて
+  しまい、Artifact の CSP で `fetch("data:")` が通らず無音になる**（宵あらわし・御霊そろえで先に
+  踏まれていた地雷と同じ形。今回は実装前に他作のコメントを読んで先回りできた）。
+  直し方: 画像はそのまま既存の正規表現（`assets/(?:art|fuda)/...`）で data:URI 化、音声だけは
+  `src/game.js` の `SE_NAMES` を `build-dist.js` が読み取って `window.AUDIO_DATA` にbase64を注ぎ、
+  `game.js` 側は `window.AUDIO_DATA` があれば `atob()` → `decodeAudioData`、無ければ
+  `fetch("assets/audio/...")` にフォールバックする（宵あらわしの `b64ToBuf` と同じ形）
+- **ローカルの検証だけでは「動く」ことしか言えず、「Artifactで動く」ことは別に確かめた。**
+  puppeteerでネットワークの `assets/audio/*` へのリクエストを遮断し、`window.AUDIO_DATA` だけで
+  デコードが通ることを確認。さらに `dist/artifact.html` を実際にビルドして同じ遮断状態で開き、
+  `build-dist.js` が実際に埋めた `window.AUDIO_DATA` からもデコードが通ることまで確認した
+  （＝「index.htmlでは動くがdist/artifact.htmlでは無音」という、前便と同じ根の事故を先に潰した）
+- **音量は最初の目安（whiff のゲイン0.5）で仮組みし、実測（-24.4dB）が夜明けの音としては沈みすぎたので
+  0.7へ上げ直した。**紙の計算（ffmpegでの粗い推定）とブラウザの実デコード後の値はズレる
+  （AACのデコーダが違う・サンプルレートも44.1kHzから48kHzへ変わる）ので、**最後は必ずブラウザで
+  実測してから決める**
+- **`purify()`/`showGameOver()` から実際に呼ばれているか**は、`window.__se` に呼び出し回数
+  （`counts`）を足して検証した。実クリックで108枚めに `end` が1回、わざと外した瞬間に `whiff` が
+  1回だけ鳴ることを確認（前便の「生成物に書いた」事故のあと、「呼ばれる場所」まで含めて測る習慣にした）
