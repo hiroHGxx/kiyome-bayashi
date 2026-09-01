@@ -94,11 +94,12 @@
     #overlay .card { padding-top: 14px; padding-bottom: 14px; gap: 6px; }
     #overlay .card > #retry { position: sticky; bottom: 0; z-index: 1; }   /* 唯一必ず押せねばならない釦を札の下端に貼る（SHITSURAE §6） */
   }
-  /* ---- 番付（開いて閉じる札） ---- */
-  #banzuke { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(10,10,24,.78); z-index: 12; }
-  #banzuke.show { display: flex; }
-  .bz-card { position: relative; width: min(92vw, 420px); max-height: calc(100vh - 24px); overflow-y: auto; touch-action: pan-y; background: var(--night-2); border: 1px solid #b89b5a; border-radius: var(--r-card); padding: 20px 16px; display: flex; flex-direction: column; gap: 8px; }
-  #bz-close { position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; border-radius: var(--r-btn); border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; }
+  /* ---- 番付・図鑑（同じ「開いて閉じる札」の型。✕と外側タップまで揃える＝指の作法を増やさない・SHITSURAE §7） ---- */
+  #banzuke, #zukan { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(10,10,24,.78); z-index: 12; }
+  #zukan { z-index: 14; }   /* 結果札（10）→番付（12）→図鑑（14）。結果札から開くので上に出す */
+  #banzuke.show, #zukan.show { display: flex; }
+  .bz-card { position: relative; width: min(92vw, 420px); max-height: calc(100vh - 24px - env(safe-area-inset-bottom, 0px)); overflow-y: auto; touch-action: pan-y; background: var(--night-2); border: 1px solid #b89b5a; border-radius: var(--r-card); padding: 20px 16px; display: flex; flex-direction: column; gap: 8px; }
+  #bz-close, #zk-close { position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; border-radius: var(--r-btn); border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; }
   #bz-head { font-size: 18px; font-weight: 800; letter-spacing: .3em; color: var(--moon); text-align: center; }
   #bz-sub { font-size: 12px; letter-spacing: .12em; color: var(--ink-dim); text-align: center; }
   #bz-list, #bz-me { list-style: none; display: flex; flex-direction: column; gap: 3px; }
@@ -108,6 +109,19 @@
   .bz-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .bz-score { font-family: "M PLUS Rounded 1c", sans-serif; font-weight: 800; color: var(--moon); }
   #bz-gap { font-size: 13px; text-align: center; letter-spacing: .3em; color: var(--ink-dim); }
+  /* 図鑑 29柱。灯る前＝段03（闇のまま）・灯った後＝段10（極彩）。追加の素材は使わない（SPEC §8） */
+  #zk-head, #zk-sub { text-align: center; }
+  #zk-head { font-size: 18px; font-weight: 800; letter-spacing: .3em; color: var(--moon); }
+  #zk-sub { font-size: 12px; letter-spacing: .12em; color: var(--ink-dim); }
+  /* 29柱は8行になる。札ごと送ると ✕ が上へ流れて閉じられなくなる（画面が札で埋まり、外側タップの余地も無い）。
+     送るのは升目だけにして、✕・見出し・数はいつでも見えるところに残す */
+  #zukan .bz-card { overflow: hidden; }
+  #zk-grid { flex: 1 1 auto; min-height: 0; overflow-y: auto; touch-action: pan-y; list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .zk-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .zk-cell img { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; display: block; border-radius: var(--r-sm); border: 1px solid var(--line); }
+  .zk-cell.lit img { border-color: var(--kindei); }
+  .zk-name { max-width: 100%; font-size: 12px; letter-spacing: .02em; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .zk-cell.lit .zk-name { color: var(--ink); }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 </style>
 </head>
@@ -156,7 +170,17 @@
       <div id="final-rank-mark" hidden>番付の記録を更新</div>
       <div id="final-rank-line" hidden></div>
     </div>
+    <button id="zukan-open" class="rank-open">図鑑 0/29 ›</button>
     <button id="retry">もう一夜</button>
+  </div>
+</div>
+
+<div id="zukan" role="dialog" aria-label="図鑑">
+  <div class="bz-card">
+    <button id="zk-close" aria-label="閉じる">✕</button>
+    <div id="zk-head">図　鑑</div>
+    <div id="zk-sub"></div>
+    <ul id="zk-grid"></ul>
   </div>
 </div>
 
@@ -406,6 +430,7 @@
     const renewed = !practice && purified > prevBest;
     $("final-best").textContent = "最高 " + saveData.best + "枚" + (renewed ? "　更新" : "") + (practice ? "（稽古）" : "");
     $("final-best").classList.toggle("new", renewed);
+    updateZukanEntry();   // 束へ足したあとの数（この夜に初めて浄めた柱もここで灯る）
     overlay.classList.add("show");
     if (canSubmitScore()) reportScore(purified, nightId);
   }
@@ -430,7 +455,35 @@
     $("bz-sub").hidden = !(total !== null && total >= myRank); $("bz-sub").textContent = total !== null ? "全国 " + total + "人" : ""; $("banzuke").classList.add("show");
   }
   $("bz-close").addEventListener("click", () => $("banzuke").classList.remove("show")); $("banzuke").addEventListener("click", (e) => { if (e.target === $("banzuke")) $("banzuke").classList.remove("show"); });
-  function restart() { overlay.classList.remove("show"); $("banzuke").classList.remove("show"); resetRun(); }
+
+  /* ---- 図鑑29柱（SPEC §1 meta 層）。浄めた柱が灯る＝二値。段位で育てるのは第一版に入れない（§12） ---- */
+  const litCount = () => SPIRITS.reduce((n, s) => n + (saveData.spirits[s.id] > 0 ? 1 : 0), 0);
+  let zkBuilt = false;
+  function buildZukan() {
+    if (zkBuilt) return; zkBuilt = true;
+    const g = $("zk-grid");
+    for (const s of SPIRITS) {
+      const li = document.createElement("li"); li.className = "zk-cell"; li.dataset.id = s.id; li.dataset.name = s.name;
+      const im = document.createElement("img"); im.alt = "";
+      const nm = document.createElement("span"); nm.className = "zk-name"; nm.textContent = s.name;
+      li.append(im, nm); g.appendChild(li);
+    }
+  }
+  function paintZukan() {
+    for (const li of $("zk-grid").children) {
+      const id = li.dataset.id, lit = saveData.spirits[id] > 0, im = li.firstChild;
+      li.classList.toggle("lit", lit);
+      im.src = FUDA[id + "_" + (lit ? "10" : "03")];   // 道は FUDA の表から引く（組み立てた文字列は artifact で base64 に化けない）
+      im.alt = li.dataset.name + (lit ? "・灯っている" : "・まだ闇の中");
+    }
+    const n = litCount();
+    $("zk-sub").textContent = n >= SPIRITS.length ? "満　天 — 二十九柱すべてに灯がともった" : n + " ／ 29 柱";
+  }
+  function openZukan() { buildZukan(); paintZukan(); $("zukan").classList.add("show"); }
+  const updateZukanEntry = () => { $("zukan-open").textContent = "図鑑 " + litCount() + "/29 ›"; };
+  $("zukan-open").addEventListener("click", openZukan);
+  $("zk-close").addEventListener("click", () => $("zukan").classList.remove("show")); $("zukan").addEventListener("click", (e) => { if (e.target === $("zukan")) $("zukan").classList.remove("show"); });
+  function restart() { overlay.classList.remove("show"); $("banzuke").classList.remove("show"); $("zukan").classList.remove("show"); resetRun(); }
   $("retry").addEventListener("click", restart);
 
   /* ---- 音（骨では鳴らさない。MEDIA.md の作法で足す。ミュートは再生中の台詞も止めること） ---- */

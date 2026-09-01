@@ -41,6 +41,20 @@ const tap = async (p) => { const r = await p.$eval("#game", (e) => { const q = e
     // 束に満願の回数と柱ごとの枚数が残る（SPEC §7・図鑑の元）。SDK 経路（waiwai: の鍵）で数える
     { const sv = JSON.parse(s.saved || "{}"); const sp = sv.spirits || {}; const ids = Object.keys(sp); const sum = ids.reduce((a, k) => a + sp[k], 0);
       check("満願の夜が束へ残る（clears・spirits）", sv.clears === 1 && ids.length === 29 && sum === +s.floors, { clears: sv.clears, 柱数: ids.length, 枚数の和: sum, 浄めた枚数: +s.floors }); }
+    // 図鑑（29柱・浄めた柱が灯る）。下まで送っても ✕ が残ることを数える＝札ごと送ると閉じられなくなる
+    { const zk = await page.evaluate(() => {
+        document.getElementById("zukan-open").click();
+        const g = document.getElementById("zk-grid"), card = document.querySelector("#zukan .bz-card"), cells = [...g.children];
+        const src = (c) => c.firstChild.getAttribute("src") || "";
+        const lit = cells.filter((c) => c.classList.contains("lit")), dark = cells.filter((c) => !c.classList.contains("lit"));
+        const open = document.getElementById("zukan").classList.contains("show");
+        card.scrollTop = card.scrollHeight; g.scrollTop = g.scrollHeight;   // どちらが送る側でも下まで送る
+        const x = document.getElementById("zk-close").getBoundingClientRect();
+        document.getElementById("zk-close").click();
+        return { open, 升目: cells.length, 灯: lit.length, 段10: lit.filter((c) => /_10\./.test(src(c))).length, 段03: dark.filter((c) => /_03\./.test(src(c))).length,
+          閉じ釦が見える: x.top >= 0 && x.bottom <= innerHeight, 閉じた: !document.getElementById("zukan").classList.contains("show") };
+      });
+      check("図鑑が29柱ぶん灯り、下まで送っても閉じられる", zk.open && zk.升目 === 29 && zk.灯 === 29 && zk.段10 === 29 && zk.閉じ釦が見える && zk.閉じた, zk); }
     await browser.close(); }
   // ② わざと終わる
   { const { browser, page, errors } = await open(base, "#autocut"); await page.waitForFunction(() => document.getElementById("overlay").classList.contains("show"), { polling: 300, timeout: 60000 }); const s = await state(page); check("わざと終わる・送信0", s.over && s.submits === 0 && errors.length === 0, { ...s, errors }); await browser.close(); }

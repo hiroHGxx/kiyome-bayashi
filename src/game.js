@@ -231,6 +231,7 @@
     const renewed = !practice && purified > prevBest;
     $("final-best").textContent = "最高 " + saveData.best + "枚" + (renewed ? "　更新" : "") + (practice ? "（稽古）" : "");
     $("final-best").classList.toggle("new", renewed);
+    updateZukanEntry();   // 束へ足したあとの数（この夜に初めて浄めた柱もここで灯る）
     overlay.classList.add("show");
     if (canSubmitScore()) reportScore(purified, nightId);
   }
@@ -255,7 +256,35 @@
     $("bz-sub").hidden = !(total !== null && total >= myRank); $("bz-sub").textContent = total !== null ? "全国 " + total + "人" : ""; $("banzuke").classList.add("show");
   }
   $("bz-close").addEventListener("click", () => $("banzuke").classList.remove("show")); $("banzuke").addEventListener("click", (e) => { if (e.target === $("banzuke")) $("banzuke").classList.remove("show"); });
-  function restart() { overlay.classList.remove("show"); $("banzuke").classList.remove("show"); resetRun(); }
+
+  /* ---- 図鑑29柱（SPEC §1 meta 層）。浄めた柱が灯る＝二値。段位で育てるのは第一版に入れない（§12） ---- */
+  const litCount = () => SPIRITS.reduce((n, s) => n + (saveData.spirits[s.id] > 0 ? 1 : 0), 0);
+  let zkBuilt = false;
+  function buildZukan() {
+    if (zkBuilt) return; zkBuilt = true;
+    const g = $("zk-grid");
+    for (const s of SPIRITS) {
+      const li = document.createElement("li"); li.className = "zk-cell"; li.dataset.id = s.id; li.dataset.name = s.name;
+      const im = document.createElement("img"); im.alt = "";
+      const nm = document.createElement("span"); nm.className = "zk-name"; nm.textContent = s.name;
+      li.append(im, nm); g.appendChild(li);
+    }
+  }
+  function paintZukan() {
+    for (const li of $("zk-grid").children) {
+      const id = li.dataset.id, lit = saveData.spirits[id] > 0, im = li.firstChild;
+      li.classList.toggle("lit", lit);
+      im.src = FUDA[id + "_" + (lit ? "10" : "03")];   // 道は FUDA の表から引く（組み立てた文字列は artifact で base64 に化けない）
+      im.alt = li.dataset.name + (lit ? "・灯っている" : "・まだ闇の中");
+    }
+    const n = litCount();
+    $("zk-sub").textContent = n >= SPIRITS.length ? "満　天 — 二十九柱すべてに灯がともった" : n + " ／ 29 柱";
+  }
+  function openZukan() { buildZukan(); paintZukan(); $("zukan").classList.add("show"); }
+  const updateZukanEntry = () => { $("zukan-open").textContent = "図鑑 " + litCount() + "/29 ›"; };
+  $("zukan-open").addEventListener("click", openZukan);
+  $("zk-close").addEventListener("click", () => $("zukan").classList.remove("show")); $("zukan").addEventListener("click", (e) => { if (e.target === $("zukan")) $("zukan").classList.remove("show"); });
+  function restart() { overlay.classList.remove("show"); $("banzuke").classList.remove("show"); $("zukan").classList.remove("show"); resetRun(); }
   $("retry").addEventListener("click", restart);
 
   /* ---- 音（骨では鳴らさない。MEDIA.md の作法で足す。ミュートは再生中の台詞も止めること） ---- */
