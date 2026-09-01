@@ -82,6 +82,9 @@
   #final-title { font-size: 17px; font-weight: 800; color: var(--moon); }
   #final-score { font-family: "M PLUS Rounded 1c", sans-serif; font-size: 40px; font-weight: 800; line-height: 1; }
   #final-score small { font-size: 18px; font-family: "Shippori Mincho B1", serif; }
+  /* 最高は札の背を伸ばさないよう、枚数のすぐ下に1行だけ（SHITSURAE §6「行を足すなら余白から取る」） */
+  #final-best { font-size: 13px; letter-spacing: .1em; color: var(--ink-dim); margin-top: -4px; }
+  #final-best.new { color: var(--moon); }
   #final-rank { display: flex; flex-direction: column; gap: 3px; }
   #final-rank-mark { font-size: 13px; letter-spacing: .1em; color: var(--moon); }
   #final-rank-line { display: flex; justify-content: center; font-size: 13px; letter-spacing: .1em; color: var(--ink-dim); }
@@ -148,8 +151,9 @@
     <div id="final-title">宵の口</div>
     <div class="score-label">浄めた枚数</div>
     <div id="final-score">0<small>枚</small></div>
+    <div id="final-best">最高 0枚</div>
     <div id="final-rank" hidden>
-      <div id="final-rank-mark" hidden>最高記録を更新</div>
+      <div id="final-rank-mark" hidden>番付の記録を更新</div>
       <div id="final-rank-line" hidden></div>
     </div>
     <button id="retry">もう一夜</button>

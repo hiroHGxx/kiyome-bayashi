@@ -121,7 +121,9 @@
   const rings = [], floats = [];
   const runTally = new Map();       // この夜に柱ごとへ何枚浄めたか。夜の終わりに束へ足す（稽古は足さない）
   let runStart = 0, manganAt = 0;
-  window.__stats = () => ({ purified, pillars: litSet ? litSet.size : 0, manganAt, over, ids: rows.flatMap((r) => [r.darkId, r.colorId]) });   // ids は検証用（同じ柱が盤に二度出ていないかを数える）
+  // 検証用の覗き口（読むだけ）。ids は「同じ柱が盤に二度出ていないか」を数える。
+  // lane は最下段の未浄の筋＝機械に手で遊ばせて実写真を撮るため（自動プレイは番付の行が出ないので画が撮れない）
+  window.__stats = () => ({ purified, pillars: litSet ? litSet.size : 0, manganAt, over, lane: (lowestUncleared() || {}).darkLane, ids: rows.flatMap((r) => [r.darkId, r.colorId]) });
 
   const shuffled = () => { const a = SPIRITS.map((s) => s.id); for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; const t = a[i]; a[i] = a[j]; a[j] = t; } return a; };
   const liveIds = () => { const v = new Set(); for (const r of rows) { v.add(r.darkId); v.add(r.colorId); } return v; };
@@ -214,6 +216,7 @@
   function showGameOver(cleared) {
     $("final-rank").hidden = true; $("final-rank-mark").hidden = true; $("final-rank-line").hidden = true; $("final-rank-line").textContent = "";
     const won = !!cleared || purified >= MANGAN;
+    const prevBest = saveData.best;   // 束を書き換える前に控える（自己最高の更新は SDK が無い夜でも出す）
     // 束へ足すのは夜の終わりに1回だけ（稽古は残さない・SPEC §6）。満願は回数、柱は枚数で積む
     if (!practice) {
       if (purified > saveData.titleRank) { saveData.titleRank = purified; saveData.title = titleFor(purified); }
@@ -223,7 +226,12 @@
       saveDirty = true; persistSave();
     }
     $("result-card").classList.toggle("clear", won); $("final-heading").textContent = won ? "明けの祓い" : "夜が明けた"; $("final-sub").textContent = won ? "百八の闇は、みな色を取り戻した" : "囃子は、ここで途切れた";
-    $("final-title").textContent = titleFor(purified); $("final-score").innerHTML = purified + "<small>枚</small>"; overlay.classList.add("show");
+    $("final-title").textContent = titleFor(purified); $("final-score").innerHTML = purified + "<small>枚</small>";
+    // 最高（自己）。稽古の夜は束を触っていないので、これまでの最高をそのまま出す
+    const renewed = !practice && purified > prevBest;
+    $("final-best").textContent = "最高 " + saveData.best + "枚" + (renewed ? "　更新" : "") + (practice ? "（稽古）" : "");
+    $("final-best").classList.toggle("new", renewed);
+    overlay.classList.add("show");
     if (canSubmitScore()) reportScore(purified, nightId);
   }
   window.__forceOver = () => { if (started && !over) { over = true; showGameOver(false); } };   // 検証用

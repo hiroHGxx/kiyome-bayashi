@@ -82,6 +82,9 @@
   #final-title { font-size: 17px; font-weight: 800; color: var(--moon); }
   #final-score { font-family: "M PLUS Rounded 1c", sans-serif; font-size: 40px; font-weight: 800; line-height: 1; }
   #final-score small { font-size: 18px; font-family: "Shippori Mincho B1", serif; }
+  /* 最高は札の背を伸ばさないよう、枚数のすぐ下に1行だけ（SHITSURAE §6「行を足すなら余白から取る」） */
+  #final-best { font-size: 13px; letter-spacing: .1em; color: var(--ink-dim); margin-top: -4px; }
+  #final-best.new { color: var(--moon); }
   #final-rank { display: flex; flex-direction: column; gap: 3px; }
   #final-rank-mark { font-size: 13px; letter-spacing: .1em; color: var(--moon); }
   #final-rank-line { display: flex; justify-content: center; font-size: 13px; letter-spacing: .1em; color: var(--ink-dim); }
@@ -148,8 +151,9 @@
     <div id="final-title">宵の口</div>
     <div class="score-label">浄めた枚数</div>
     <div id="final-score">0<small>枚</small></div>
+    <div id="final-best">最高 0枚</div>
     <div id="final-rank" hidden>
-      <div id="final-rank-mark" hidden>最高記録を更新</div>
+      <div id="final-rank-mark" hidden>番付の記録を更新</div>
       <div id="final-rank-line" hidden></div>
     </div>
     <button id="retry">もう一夜</button>
@@ -292,7 +296,9 @@
   const rings = [], floats = [];
   const runTally = new Map();       // この夜に柱ごとへ何枚浄めたか。夜の終わりに束へ足す（稽古は足さない）
   let runStart = 0, manganAt = 0;
-  window.__stats = () => ({ purified, pillars: litSet ? litSet.size : 0, manganAt, over, ids: rows.flatMap((r) => [r.darkId, r.colorId]) });   // ids は検証用（同じ柱が盤に二度出ていないかを数える）
+  // 検証用の覗き口（読むだけ）。ids は「同じ柱が盤に二度出ていないか」を数える。
+  // lane は最下段の未浄の筋＝機械に手で遊ばせて実写真を撮るため（自動プレイは番付の行が出ないので画が撮れない）
+  window.__stats = () => ({ purified, pillars: litSet ? litSet.size : 0, manganAt, over, lane: (lowestUncleared() || {}).darkLane, ids: rows.flatMap((r) => [r.darkId, r.colorId]) });
 
   const shuffled = () => { const a = SPIRITS.map((s) => s.id); for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; const t = a[i]; a[i] = a[j]; a[j] = t; } return a; };
   const liveIds = () => { const v = new Set(); for (const r of rows) { v.add(r.darkId); v.add(r.colorId); } return v; };
@@ -385,6 +391,7 @@
   function showGameOver(cleared) {
     $("final-rank").hidden = true; $("final-rank-mark").hidden = true; $("final-rank-line").hidden = true; $("final-rank-line").textContent = "";
     const won = !!cleared || purified >= MANGAN;
+    const prevBest = saveData.best;   // 束を書き換える前に控える（自己最高の更新は SDK が無い夜でも出す）
     // 束へ足すのは夜の終わりに1回だけ（稽古は残さない・SPEC §6）。満願は回数、柱は枚数で積む
     if (!practice) {
       if (purified > saveData.titleRank) { saveData.titleRank = purified; saveData.title = titleFor(purified); }
@@ -394,7 +401,12 @@
       saveDirty = true; persistSave();
     }
     $("result-card").classList.toggle("clear", won); $("final-heading").textContent = won ? "明けの祓い" : "夜が明けた"; $("final-sub").textContent = won ? "百八の闇は、みな色を取り戻した" : "囃子は、ここで途切れた";
-    $("final-title").textContent = titleFor(purified); $("final-score").innerHTML = purified + "<small>枚</small>"; overlay.classList.add("show");
+    $("final-title").textContent = titleFor(purified); $("final-score").innerHTML = purified + "<small>枚</small>";
+    // 最高（自己）。稽古の夜は束を触っていないので、これまでの最高をそのまま出す
+    const renewed = !practice && purified > prevBest;
+    $("final-best").textContent = "最高 " + saveData.best + "枚" + (renewed ? "　更新" : "") + (practice ? "（稽古）" : "");
+    $("final-best").classList.toggle("new", renewed);
+    overlay.classList.add("show");
     if (canSubmitScore()) reportScore(purified, nightId);
   }
   window.__forceOver = () => { if (started && !over) { over = true; showGameOver(false); } };   // 検証用
