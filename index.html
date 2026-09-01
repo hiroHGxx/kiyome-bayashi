@@ -1,3 +1,174 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#131320">
+<title>浄めばやし</title>
+<meta name="description" content="浄めばやし — 『月蝕綺譚 -Luna Occulta-』二次創作ファンゲーム。">
+<meta property="og:title" content="浄めばやし">
+<meta property="og:description" content="（一行で遊びの芯）『月蝕綺譚 -Luna Occulta-』二次創作。">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://hirohgxx.github.io/kiyome-bayashi/">
+<meta property="og:image" content="https://hirohgxx.github.io/kiyome-bayashi/ogp.png">
+<meta property="og:site_name" content="浄めばやし">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://hirohgxx.github.io/kiyome-bayashi/ogp.png">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='34' fill='%23F0CE7E'/></svg>">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=M+PLUS+Rounded+1c:wght@800&display=swap">
+<style>
+  /* 公式トンマナ「宵闇に金」（正本: 公式MCP kitan-lore get_design_tone）。新しい色を発明しない。#7C7396 は使わない */
+  :root {
+    --night: #131320; --night-2: #1B1B2E; --line: #4a4468;
+    --ink: #E8E4D8; --ink-dim: #9D93B5;
+    --moon: #F0CE7E; --kindei: #D9A94C; --shokko: #E0562F; --anshi: #8E6B9E;
+    --r-sm: 4px; --r-btn: 5px; --r-card: 10px;  /* 角丸は 4/5/10 の3種（公式: ボタン5／内側4／カード9〜10） */
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; touch-action: none; }
+  button { touch-action: manipulation; font-family: inherit; }
+  body {
+    background: var(--night); color: var(--ink);
+    font-family: "Shippori Mincho B1", "Hiragino Mincho ProN", serif;
+    overflow: hidden; display: flex; flex-direction: column; align-items: center;
+    -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+    /* 下端の安全余白（iPhone のホームバー）。viewport-fit=cover なので必ず足す */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  header { width: 100%; max-width: 480px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px 6px; }
+  h1 { font-size: 16px; font-weight: 800; letter-spacing: .14em; color: var(--moon); line-height: 1.2; }
+  h1 small { display: block; font-size: 12px; letter-spacing: .1em; color: var(--ink-dim); font-weight: 500; }
+  .stats { display: flex; align-items: center; gap: 10px; padding: 6px 10px; background: var(--night-2); border: 1px solid var(--line); border-radius: var(--r-card); }
+  .stat { text-align: center; }
+  .stat .label { font-size: 12px; letter-spacing: .1em; color: var(--ink-dim); }   /* HUD は日本語「浄／最高／柱」。札の上には重ねない（半透明だと明るい札に負ける・SPEC §2） */
+  .stat .value { font-family: "M PLUS Rounded 1c", sans-serif; font-size: 20px; font-weight: 800; }
+  #pillars { font-size: 15px; letter-spacing: .02em; }   /* 「12/29」は桁が多いので値の字だけ詰める（12px の床は割らない） */
+  #mute { width: 30px; height: 30px; border-radius: var(--r-btn); border: 1px solid var(--line); background: transparent; color: var(--moon); font-size: 14px; cursor: pointer; }
+  #mute.off { color: var(--ink-dim); text-decoration: line-through; }
+  main { flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; min-height: 0; }
+  canvas { display: block; border-radius: var(--r-card); }
+  footer { font-size: 12px; letter-spacing: .02em; line-height: 1.4; color: var(--ink-dim); text-align: center; padding: 4px 12px 6px; }
+
+  /* ---- 案内カード（開幕の時間割: 絵だけ1.2秒 → カード0.7秒で 0→100%。押せるのは ready のあと） ---- */
+  #title-overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--night); z-index: 20; overflow: hidden; padding: 20px; }
+  #title-bg { position: absolute; inset: 0; background: center/cover no-repeat; opacity: 0; transition: opacity .6s ease; }
+  #title-overlay.art-in #title-bg { opacity: 1; }
+  #title-overlay::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(19,19,32,.3), rgba(19,19,32,.85)); opacity: 0; transition: opacity .7s ease; }
+  #title-overlay.ready::before { opacity: 1; }
+  #title-overlay .card { opacity: 0; transition: opacity .7s ease; pointer-events: none; }  /* 押せる前のタップを受けない */
+  #title-overlay.ready .card { opacity: 1; pointer-events: auto; }
+  #title-overlay.hidden { display: none; }
+  .card { position: relative; width: min(92vw, 420px); max-height: calc(100vh - 12px - env(safe-area-inset-bottom, 0px)); overflow-y: auto; touch-action: pan-y;
+    background: linear-gradient(170deg, rgba(28,24,54,.93), rgba(19,16,38,.95)); border: 1px solid #b89b5a; border-radius: var(--r-card);
+    box-shadow: 0 0 0 3px rgba(19,16,38,.9), 0 0 0 4px #6d5a33, 0 14px 50px rgba(0,0,0,.65); padding: 28px 28px; text-align: center; display: flex; flex-direction: column; gap: 12px; }
+  .game-title { font-size: 28px; font-weight: 800; letter-spacing: .18em; color: var(--moon); }
+  .game-sub { font-size: 12px; letter-spacing: .15em; color: var(--ink-dim); margin-top: -6px; }
+  #best-title { font-size: 12px; letter-spacing: .1em; color: var(--ink-dim); }
+  .howto { list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 13px; line-height: 1.6; text-align: left; }
+  .howto li::before { content: "○ "; color: var(--kindei); }
+  #start { padding: 14px; border: 0; border-radius: var(--r-btn); background: var(--moon); color: var(--night); font-size: 15px; font-weight: 800; letter-spacing: .2em; cursor: pointer; }
+  #start:focus-visible { outline: 3px solid var(--moon); outline-offset: 2px; }
+  .sound-note { font-size: 12px; letter-spacing: .1em; color: var(--ink-dim); margin-top: -4px; }
+  #start-silent { padding: 9px; border: 1px solid var(--line); border-radius: var(--r-btn); background: transparent; color: var(--ink-dim); font-size: 12px; letter-spacing: .15em; cursor: pointer; }
+
+  /* ---- 結果札（順位2行が乗っても 375×667 で「もう一夜」に届く） ---- */
+  #overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(10,10,24,.78); z-index: 10; padding-bottom: env(safe-area-inset-bottom, 0px); }
+  #overlay.show { display: flex; }
+  #result-card .title { font-size: 22px; font-weight: 800; letter-spacing: .2em; color: var(--shokko); }
+  #result-card.clear .title { color: var(--moon); }
+  #result-card .sub { font-size: 12px; letter-spacing: .1em; color: var(--ink-dim); margin-top: -6px; }
+  #final-fuda { display: none; width: 148px; border-radius: var(--r-sm); border: 2px solid #b89b5a; margin: 0 auto; }
+  .score-label { font-size: 12px; letter-spacing: .15em; color: var(--ink-dim); }
+  #final-title { font-size: 17px; font-weight: 800; color: var(--moon); }
+  #final-score { font-family: "M PLUS Rounded 1c", sans-serif; font-size: 40px; font-weight: 800; line-height: 1; }
+  #final-score small { font-size: 18px; font-family: "Shippori Mincho B1", serif; }
+  #final-rank { display: flex; flex-direction: column; gap: 3px; }
+  #final-rank-mark { font-size: 13px; letter-spacing: .1em; color: var(--moon); }
+  #final-rank-line { display: flex; justify-content: center; font-size: 13px; letter-spacing: .1em; color: var(--ink-dim); }
+  .rank-open { font: inherit; color: inherit; background: transparent; border: 1px solid var(--line); border-radius: var(--r-btn); padding: 6px 12px; min-height: 36px; cursor: pointer; }
+  #retry { padding: 12px; border: 0; border-radius: var(--r-btn); background: var(--moon); color: var(--night); font-size: 14px; font-weight: 800; letter-spacing: .2em; cursor: pointer; }
+  @media (max-height: 700px) {
+    #overlay .card { padding-top: 14px; padding-bottom: 14px; gap: 6px; }
+    #overlay .card > #retry { position: sticky; bottom: 0; z-index: 1; }   /* 唯一必ず押せねばならない釦を札の下端に貼る（SHITSURAE §6） */
+  }
+  /* ---- 番付（開いて閉じる札） ---- */
+  #banzuke { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(10,10,24,.78); z-index: 12; }
+  #banzuke.show { display: flex; }
+  .bz-card { position: relative; width: min(92vw, 420px); max-height: calc(100vh - 24px); overflow-y: auto; touch-action: pan-y; background: var(--night-2); border: 1px solid #b89b5a; border-radius: var(--r-card); padding: 20px 16px; display: flex; flex-direction: column; gap: 8px; }
+  #bz-close { position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; border-radius: var(--r-btn); border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; }
+  #bz-head { font-size: 18px; font-weight: 800; letter-spacing: .3em; color: var(--moon); text-align: center; }
+  #bz-sub { font-size: 12px; letter-spacing: .12em; color: var(--ink-dim); text-align: center; }
+  #bz-list, #bz-me { list-style: none; display: flex; flex-direction: column; gap: 3px; }
+  .bz-row { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 6px 10px; border-radius: var(--r-btn); background: rgba(19,19,32,.6); font-size: 14px; }
+  .bz-row.me { border: 1px solid var(--kindei); background: rgba(217,169,76,.12); }
+  .bz-rank { flex: 0 0 2.1em; text-align: right; font-size: 13px; font-weight: 800; color: var(--ink-dim); }
+  .bz-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bz-score { font-family: "M PLUS Rounded 1c", sans-serif; font-weight: 800; color: var(--moon); }
+  #bz-gap { font-size: 13px; text-align: center; letter-spacing: .3em; color: var(--ink-dim); }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+</style>
+</head>
+<body>
+<header>
+  <h1>浄めばやし<small>KIYOME BAYASHI</small></h1>
+  <div class="stats">
+    <div class="stat"><div class="label">浄</div><div class="value" id="score">0</div></div>
+    <div class="stat"><div class="label">最高</div><div class="value" id="best">0</div></div>
+    <div class="stat"><div class="label">柱</div><div class="value" id="pillars">0/29</div></div>
+    <button id="mute" aria-label="音の切り替え">♪</button>
+  </div>
+</header>
+<main><canvas id="game" width="480" height="720"></canvas></main>
+<footer>『月蝕綺譚 -Luna Occulta-』二次創作（非公式ファンゲーム）／ © Studio VIBE のガイドラインに基づく</footer>
+
+<div id="title-overlay">
+  <div id="title-bg"></div>
+  <div class="card">
+    <div class="game-title">浄めばやし</div>
+    <div class="game-sub">— 月蝕綺譚 -Luna Occulta- 二次創作 —</div>
+    <div id="best-title" hidden></div>
+    <ul class="howto">
+      <li>四筋を落ちてくる<b>闇の札</b>を、下から順にタップして浄める</li>
+      <li>見るのは<b>筋（たて列）だけ</b>。指の高さは要らない</li>
+      <li>色を取り戻した札を叩く／闇の札を取りこぼす＝夜が明けて終わり</li>
+      <li>浄めるほど落ちが速くなる。<b>百八枚で満願</b>、その先は延長</li>
+    </ul>
+    <button id="start">月夜に入る</button>
+    <div class="sound-note">※ 音が鳴ります（イヤホン推奨）</div>
+    <button id="start-silent">静かに入る — 音なし</button>
+  </div>
+</div>
+
+<div id="overlay">
+  <div class="card" id="result-card">
+    <div class="title" id="final-heading">夜が明けた</div>
+    <div class="sub" id="final-sub">囃子は、ここで途切れた</div>
+    <img id="final-fuda" alt="">
+    <div class="score-label">称号</div>
+    <div id="final-title">宵の口</div>
+    <div class="score-label">浄めた枚数</div>
+    <div id="final-score">0<small>枚</small></div>
+    <div id="final-rank" hidden>
+      <div id="final-rank-mark" hidden>最高記録を更新</div>
+      <div id="final-rank-line" hidden></div>
+    </div>
+    <button id="retry">もう一夜</button>
+  </div>
+</div>
+
+<div id="banzuke" role="dialog" aria-label="番付">
+  <div class="bz-card">
+    <button id="bz-close" aria-label="閉じる">✕</button>
+    <div id="bz-head">番　付</div>
+    <div id="bz-sub" hidden></div>
+    <ul id="bz-list"></ul>
+    <div id="bz-gap" hidden>⋮</div>
+    <ul id="bz-me" hidden></ul>
+  </div>
+</div>
+
+<script src="https://waiwai.town/sdk.js" crossorigin="anonymous"></script>
+<script>
 /* 浄めばやし — 落下タイル（SPEC §2・§3 が正本）。四筋を落ちる「闇の札」だけを、下から順に叩いて浄める。 */
 (() => {
   "use strict";
@@ -267,3 +438,7 @@
   }
   requestAnimationFrame(frame);
 })();
+
+</script>
+</body>
+</html>

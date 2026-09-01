@@ -40,9 +40,9 @@
   h1 small { display: block; font-size: 12px; letter-spacing: .1em; color: var(--ink-dim); font-weight: 500; }
   .stats { display: flex; align-items: center; gap: 10px; padding: 6px 10px; background: var(--night-2); border: 1px solid var(--line); border-radius: var(--r-card); }
   .stat { text-align: center; }
-  .stat .label { font-size: 12px; letter-spacing: .1em; color: var(--ink-dim); }   /* HUD は日本語「段／最高／御霊」 */
+  .stat .label { font-size: 12px; letter-spacing: .1em; color: var(--ink-dim); }   /* HUD は日本語「浄／最高／柱」。札の上には重ねない（半透明だと明るい札に負ける・SPEC §2） */
   .stat .value { font-family: "M PLUS Rounded 1c", sans-serif; font-size: 20px; font-weight: 800; }
-  #spirit-face { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--kindei); background: var(--night); display: block; }
+  #pillars { font-size: 15px; letter-spacing: .02em; }   /* 「12/29」は桁が多いので値の字だけ詰める（12px の床は割らない） */
   #mute { width: 30px; height: 30px; border-radius: var(--r-btn); border: 1px solid var(--line); background: transparent; color: var(--moon); font-size: 14px; cursor: pointer; }
   #mute.off { color: var(--ink-dim); text-decoration: line-through; }
   main { flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; min-height: 0; }
@@ -112,9 +112,9 @@
 <header>
   <h1>浄めばやし<small>KIYOME BAYASHI</small></h1>
   <div class="stats">
-    <div class="stat"><div class="label">段</div><div class="value" id="score">0</div></div>
+    <div class="stat"><div class="label">浄</div><div class="value" id="score">0</div></div>
     <div class="stat"><div class="label">最高</div><div class="value" id="best">0</div></div>
-    <div class="stat"><div class="label">御霊</div><img id="spirit-face" alt=""></div>
+    <div class="stat"><div class="label">柱</div><div class="value" id="pillars">0/29</div></div>
     <button id="mute" aria-label="音の切り替え">♪</button>
   </div>
 </header>
@@ -128,10 +128,10 @@
     <div class="game-sub">— 月蝕綺譚 -Luna Occulta- 二次創作 —</div>
     <div id="best-title" hidden></div>
     <ul class="howto">
-      <li>（遊び方その一・タップで何が起きるか）</li>
-      <li>（その二）</li>
-      <li>（その三）</li>
-      <li>（どうなれば満月に逢えるか）</li>
+      <li>四筋を落ちてくる<b>闇の札</b>を、下から順にタップして浄める</li>
+      <li>見るのは<b>筋（たて列）だけ</b>。指の高さは要らない</li>
+      <li>色を取り戻した札を叩く／闇の札を取りこぼす＝夜が明けて終わり</li>
+      <li>浄めるほど落ちが速くなる。<b>百八枚で満願</b>、その先は延長</li>
     </ul>
     <button id="start">月夜に入る</button>
     <div class="sound-note">※ 音が鳴ります（イヤホン推奨）</div>
@@ -141,13 +141,13 @@
 
 <div id="overlay">
   <div class="card" id="result-card">
-    <div class="title" id="final-heading">札は夜に呑まれた</div>
-    <div class="sub" id="final-sub">重ねた道は、ここまで</div>
+    <div class="title" id="final-heading">夜が明けた</div>
+    <div class="sub" id="final-sub">囃子は、ここで途切れた</div>
     <img id="final-fuda" alt="">
     <div class="score-label">称号</div>
     <div id="final-title">宵の口</div>
-    <div class="score-label">重ねた段</div>
-    <div id="final-score">0<small>段</small></div>
+    <div class="score-label">浄めた枚数</div>
+    <div id="final-score">0<small>枚</small></div>
     <div id="final-rank" hidden>
       <div id="final-rank-mark" hidden>最高記録を更新</div>
       <div id="final-rank-line" hidden></div>

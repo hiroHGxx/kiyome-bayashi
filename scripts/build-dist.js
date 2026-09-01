@@ -12,7 +12,7 @@ function assertOk(html, label) {
 }
 assertOk(inlined, "index"); fs.writeFileSync(path.join(root, "index.html"), inlined);
 const MIME = { m4a: "audio/mp4", wav: "audio/wav", mp3: "audio/mpeg", webp: "image/webp", png: "image/png", jpg: "image/jpeg" };
-let art = inlined.replace(/assets\/(?:audio|art|fuda)\/[\w.-]+\.(m4a|wav|mp3|webp|png|jpg)/g, (ref, ext) => {
+let art = inlined.replace(/assets\/(?:audio|art|fuda)\/(?:[\w.-]+\/)*[\w.-]+\.(m4a|wav|mp3|webp|png|jpg)/g, (ref, ext) => {
   const f = path.join(root, ref); if (!fs.existsSync(f)) return ref;
   return "data:" + MIME[ext] + ";base64," + fs.readFileSync(f).toString("base64");
 });
