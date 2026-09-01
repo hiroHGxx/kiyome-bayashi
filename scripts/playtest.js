@@ -37,11 +37,15 @@ const tap = async (p) => { const r = await p.$eval("#game", (e) => { const q = e
     const s = await state(page); const mangan = s.stats && s.stats.manganAt ? +(s.stats.manganAt / 1000).toFixed(1) : null;
     check("自動プレイが百八枚を通せる・送信0", s.over && +s.floors >= 108 && s.submits === 0 && errors.length === 0, { floors: s.floors, 満願まで秒: mangan, 通し秒: +((Date.now() - t0) / 1000).toFixed(1), pillars: s.stats && s.stats.pillars, submits: s.submits, errors });
     check("満願までが 60〜120 秒（受け入れ基準2）", mangan !== null && mangan >= 60 && mangan <= 120, { 満願まで秒: mangan });
-    check("同じ柱が盤に二枚出ない", samples > 100 && dup === 0, { 覗いた回数: samples, 重なり: dup, 例: worst }); await browser.close(); }
+    check("同じ柱が盤に二枚出ない", samples > 100 && dup === 0, { 覗いた回数: samples, 重なり: dup, 例: worst });
+    // 束に満願の回数と柱ごとの枚数が残る（SPEC §7・図鑑の元）。SDK 経路（waiwai: の鍵）で数える
+    { const sv = JSON.parse(s.saved || "{}"); const sp = sv.spirits || {}; const ids = Object.keys(sp); const sum = ids.reduce((a, k) => a + sp[k], 0);
+      check("満願の夜が束へ残る（clears・spirits）", sv.clears === 1 && ids.length === 29 && sum === +s.floors, { clears: sv.clears, 柱数: ids.length, 枚数の和: sum, 浄めた枚数: +s.floors }); }
+    await browser.close(); }
   // ② わざと終わる
   { const { browser, page, errors } = await open(base, "#autocut"); await page.waitForFunction(() => document.getElementById("overlay").classList.contains("show"), { polling: 300, timeout: 60000 }); const s = await state(page); check("わざと終わる・送信0", s.over && s.submits === 0 && errors.length === 0, { ...s, errors }); await browser.close(); }
   // ③ 稽古は記録を残さない
-  { const { browser, page, errors } = await open(base, "#autotest=20"); await ready(page); await page.evaluate(() => { const l = document.querySelector(".game-title"); for (let i = 0; i < 3; i++) l.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })); }); await page.waitForFunction(() => document.getElementById("overlay").classList.contains("show"), { polling: 300, timeout: 120000 }); const s = await state(page); const sv = JSON.parse(s.saved || "{}"); check("稽古は記録を残さない・送信0", s.over && s.best === "0" && !(sv.best > 0) && s.submits === 0 && errors.length === 0, { ...s, errors }); await browser.close(); }
+  { const { browser, page, errors } = await open(base, "#autotest=20"); await ready(page); await page.evaluate(() => { const l = document.querySelector(".game-title"); for (let i = 0; i < 3; i++) l.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })); }); await page.waitForFunction(() => document.getElementById("overlay").classList.contains("show"), { polling: 300, timeout: 120000 }); const s = await state(page); const sv = JSON.parse(s.saved || "{}"); check("稽古は記録を残さない・送信0", s.over && s.best === "0" && !(sv.best > 0) && !(sv.clears > 0) && Object.keys(sv.spirits || {}).length === 0 && s.submits === 0 && errors.length === 0, { ...s, errors }); await browser.close(); }
   // ④ 手で遊ぶ（押せるまで待つ→月夜に入る→0で終わる→記録なしなら送らない）
   { const { browser, page, errors } = await open(base, ""); await ready(page); await page.click("#start"); await sleep(1200); await page.evaluate(() => window.__forceOver && window.__forceOver()); await sleep(800); const s = await state(page); check("手で遊ぶ・記録が無い人の0は送らない", s.over && s.submits === 0 && !s.rankLine && errors.length === 0, { ...s, errors }); await browser.close(); }
   srv.close(); process.exit(failed ? 1 : 0);

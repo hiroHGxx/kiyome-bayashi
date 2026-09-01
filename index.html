@@ -249,7 +249,8 @@
   new ResizeObserver(fitCanvas).observe(mainEl); fitCanvas();
 
   /* ---- 記録（わいわいSDK 主経路・localStorage は控え） ---- */
-  const saveData = { best: 0, title: "", titleRank: -1, sound: "on" };
+  // clears＝満願の回数 / spirits＝柱ごとの浄めた数（29柱の図鑑の元。SPEC §7）
+  const saveData = { best: 0, title: "", titleRank: -1, sound: "on", clears: 0, spirits: {} };
   const TIMED_OUT = {}; let saveUseSdk = false, saveDirty = false;
   function waiwaiTry(fn, label, ms = 2500) {
     let call; try { call = fn(); } catch (e) { console.warn("[waiwai] " + label + " を呼べなかった", e); return Promise.resolve({ ok: false }); }
@@ -262,6 +263,13 @@
     const fl = (v) => (typeof v === "number" && isFinite(v) && v >= 0 && v <= MAX_KEEP ? Math.floor(v) : null);
     const b = fl(o.best); if (b !== null) { read++; saveData.best = Math.max(saveData.best, b); }
     const r = fl(o.titleRank); if (r !== null && typeof o.title === "string" && o.title) { read++; if (r > saveData.titleRank) { saveData.titleRank = r; saveData.title = o.title.slice(0, 40); } }
+    const c = fl(o.clears); if (c !== null) { read++; saveData.clears = Math.max(saveData.clears, c); }
+    // spirits は「知っている29柱の欄」だけを読む（見知らぬ鍵は捨てる＝壊れた束で図鑑を膨らませない）。値は best と同じ物差しで捨てる
+    if (o.spirits && typeof o.spirits === "object" && !Array.isArray(o.spirits)) {
+      let got = 0;
+      for (const s of SPIRITS) { const v = fl(o.spirits[s.id]); if (v !== null && v > 0) { got++; saveData.spirits[s.id] = Math.max(saveData.spirits[s.id] || 0, v); } }
+      if (got) read++;
+    }
     if (o.sound === "on" || o.sound === "off") saveData.sound = o.sound; return read;
   }
   const readLocal = () => { try { return JSON.parse(localStorage.getItem(SAVE_KEY) || "null"); } catch (e) { return null; } };
@@ -270,7 +278,8 @@
     mergeSave(readLocal());
     if (window.waiwai) { const r = await waiwaiTry(() => window.waiwai.load(SAVE_KEY), "load"); if (r.ok) { saveUseSdk = true; mergeSave(r.value); } }   // ok:false の夜は SDK に書かない（空で潰さない）
   }
-  function persistSave() { saveDirty = false; writeLocal(); if (saveUseSdk && window.waiwai) waiwaiTry(() => window.waiwai.save(SAVE_KEY, { ...saveData }), "save"); }
+  // spirits は入れ子なので写しを渡す（浅い写しだと、向こうが握ったまま次の夜の加算が混ざる）
+  function persistSave() { saveDirty = false; writeLocal(); if (saveUseSdk && window.waiwai) waiwaiTry(() => window.waiwai.save(SAVE_KEY, { ...saveData, spirits: { ...saveData.spirits } }), "save"); }
   document.addEventListener("visibilitychange", () => { if (document.hidden && saveDirty) persistSave(); });
   addEventListener("pagehide", () => { if (saveDirty) persistSave(); });
 
@@ -281,6 +290,7 @@
   let darkPool = [], litIds = [], litSet = null;   // 闇に出す柱の残り／すでに浄めた柱（色の札はここから）
   let lastDark = [-1, -1], lastAdj = false;
   const rings = [], floats = [];
+  const runTally = new Map();       // この夜に柱ごとへ何枚浄めたか。夜の終わりに束へ足す（稽古は足さない）
   let runStart = 0, manganAt = 0;
   window.__stats = () => ({ purified, pillars: litSet ? litSet.size : 0, manganAt, over, ids: rows.flatMap((r) => [r.darkId, r.colorId]) });   // ids は検証用（同じ柱が盤に二度出ていないかを数える）
 
@@ -338,7 +348,7 @@
 
   function resetRun() {
     over = false; purified = 0; rows = []; darkPool = shuffled(); litIds = []; litSet = new Set();
-    lastDark = [-1, -1]; lastAdj = false; rings.length = 0; floats.length = 0; manganAt = 0;
+    lastDark = [-1, -1]; lastAdj = false; rings.length = 0; floats.length = 0; manganAt = 0; runTally.clear();
     for (let i = 0; i < 3; i++) spawnRow();          // 上から3行ぶんが降りてくるところから始まる
     nightId++; pausedUntil = performance.now() + 700; runStart = performance.now(); updateHud();
   }
@@ -358,6 +368,7 @@
   function purify(r) {
     r.cleared = true; purified++;
     if (!litSet.has(r.darkId)) { litSet.add(r.darkId); litIds.push(r.darkId); }   // 浄めた柱は以後 色の札の側へ回る
+    runTally.set(r.darkId, (runTally.get(r.darkId) || 0) + 1);
     rings.push({ cx: r.darkLane * LANE_W + LANE_W / 2, cy: r.y + ROW_H / 2, t: 0 });
     if (purified === MANGAN) { manganAt = performance.now() - runStart; addFloat("満　願"); }
     else if (litSet.size === SPIRITS.length && purified < MANGAN) addFloat("満　天");
@@ -373,8 +384,15 @@
   const canSubmitScore = () => !practice && !AUTO && (purified > 0 || saveData.best > 0);   // 記録が無い人の0だけ送らない（宵あらわし式）
   function showGameOver(cleared) {
     $("final-rank").hidden = true; $("final-rank-mark").hidden = true; $("final-rank-line").hidden = true; $("final-rank-line").textContent = "";
-    if (!practice) { if (purified > saveData.titleRank) { saveData.titleRank = purified; saveData.title = titleFor(purified); } saveData.best = Math.max(saveData.best, purified); saveDirty = true; persistSave(); }
     const won = !!cleared || purified >= MANGAN;
+    // 束へ足すのは夜の終わりに1回だけ（稽古は残さない・SPEC §6）。満願は回数、柱は枚数で積む
+    if (!practice) {
+      if (purified > saveData.titleRank) { saveData.titleRank = purified; saveData.title = titleFor(purified); }
+      saveData.best = Math.max(saveData.best, purified);
+      if (won) saveData.clears = Math.min(MAX_KEEP, saveData.clears + 1);
+      for (const [id, n] of runTally) saveData.spirits[id] = Math.min(MAX_KEEP, (saveData.spirits[id] || 0) + n);
+      saveDirty = true; persistSave();
+    }
     $("result-card").classList.toggle("clear", won); $("final-heading").textContent = won ? "明けの祓い" : "夜が明けた"; $("final-sub").textContent = won ? "百八の闇は、みな色を取り戻した" : "囃子は、ここで途切れた";
     $("final-title").textContent = titleFor(purified); $("final-score").innerHTML = purified + "<small>枚</small>"; overlay.classList.add("show");
     if (canSubmitScore()) reportScore(purified, nightId);
