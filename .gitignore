@@ -1,0 +1,9 @@
+dist/
+node_modules/
+.DS_Store
+assets/fuda/
+scripts/pv/frames_*/
+scripts/pv/*.mp4
+scripts/pv/*.wav
+scripts/pv/*.webm
+scripts/pv/*.png

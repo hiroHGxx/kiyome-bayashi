@@ -1,0 +1,24 @@
+# 浄めばやし — ユーザーテスト設定（目付）。式札かさね 2026-09-01 の型。
+version: "2.0"
+project: { name: "浄めばやし", type: "browser-game", root: "." }
+test:
+  mode: "hybrid"
+  environment: "local"
+  base_url: "http://127.0.0.1:8972/"   # 観察スクリプトが配信。本番 origin では実施しない（記録が書き換わる）
+  participant_profile: "リンクを踏んで初めて来た人。『月蝕綺譚』は知っているが本作の固有ルールは知らない"
+  participant_count: 1
+  moderator: "qa"
+  locale: "ja-JP"
+sources:
+  requirements: ["docs/SPEC.md", "README.md"]
+  design: ["src/page.html", "src/game.js", "docs/DEVELOPMENT.md"]
+  change_sources: ["git"]
+  requirement_id_pattern: ""
+artifacts: { root: "docs/ut", format: "html", create_participant_view: true, create_moderator_view: true }
+execution:
+  order: ["non-mutating", "reversible-mutation", "irreversible-or-external-effect"]
+  allow_production_mutation: false
+  require_confirmation_for_external_effects: true
+test_data: { enabled: false, cleanup: "assisted", require_baseline: true, require_dry_run: true, require_explicit_approval: true }
+observation: { capture_task_time: true, capture_quotes: true, capture_screenshots: "required", anonymize_participants: true, recording: "disabled" }
+analysis: { frameworks: ["nielsen-10", "impact-effect-efficiency-satisfaction"], root_issue_target: "3-5", confidence_levels: ["high", "medium", "low"] }
