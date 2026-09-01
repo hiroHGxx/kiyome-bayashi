@@ -261,8 +261,13 @@
     const x = lane * LANE_W, im = fudaImg(id, st);
     if (im.complete && im.naturalWidth) ctx.drawImage(im, x, y, LANE_W, ROW_H);
     else { ctx.fillStyle = "#1B1B2E"; ctx.fillRect(x, y, LANE_W, ROW_H); }
-    // 闇の札には金の細枠（2px・内側）。地の暗い柱は枠が無いと札ではなく穴に見える（SPEC §2）
-    if (mark) { ctx.strokeStyle = "rgba(212,175,55,.55)"; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, LANE_W - 2, ROW_H - 2); }
+    // 闇の札には金の枠（SPEC §2）。地の暗い柱は枠が無いと札ではなく穴に見える。
+    // 細枠（2px・不透明度.55）では実機寸法で見えなかったので太らせた（2026-09-02・実写真で確認）。
+    // 金泥は内側に暗い線を添える＝明るい絵の柱でも枠の縁が溶けない。色は design-tokens.json から。
+    if (mark) {
+      ctx.strokeStyle = "#D9A94C"; ctx.lineWidth = 6; ctx.strokeRect(x + 3, y + 3, LANE_W - 6, ROW_H - 6);
+      ctx.strokeStyle = "#131320"; ctx.lineWidth = 2; ctx.strokeRect(x + 7, y + 7, LANE_W - 14, ROW_H - 14);
+    }
   }
   function draw(dt) {
     ctx.fillStyle = "#131320"; ctx.fillRect(0, 0, W, H);
@@ -281,7 +286,10 @@
     ctx.textAlign = "center";
     for (let i = floats.length - 1; i >= 0; i--) {
       const f = floats[i]; f.y -= dt * 40; f.life -= dt; if (f.life <= 0) { floats.splice(i, 1); continue; }
-      ctx.globalAlpha = Math.max(0, f.life); ctx.fillStyle = "#F0CE7E"; ctx.font = "800 34px 'Shippori Mincho B1', serif"; ctx.fillText(f.t, W / 2, f.y); ctx.globalAlpha = 1;
+      // 極彩色の札の上に乗るので、宵闇の縁取りを先に敷く（単色だと段10の絵に沈む・SPEC §4）
+      ctx.globalAlpha = Math.max(0, f.life); ctx.font = "800 34px 'Shippori Mincho B1', serif";
+      ctx.lineJoin = "round"; ctx.strokeStyle = "#131320"; ctx.lineWidth = 8; ctx.strokeText(f.t, W / 2, f.y);
+      ctx.fillStyle = "#F0CE7E"; ctx.fillText(f.t, W / 2, f.y); ctx.globalAlpha = 1;
     }
   }
   requestAnimationFrame(frame);
