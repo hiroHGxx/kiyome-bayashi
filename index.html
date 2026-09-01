@@ -282,11 +282,30 @@
   let lastDark = [-1, -1], lastAdj = false;
   const rings = [], floats = [];
   let runStart = 0, manganAt = 0;
-  window.__stats = () => ({ purified, pillars: litSet ? litSet.size : 0, manganAt, over });
+  window.__stats = () => ({ purified, pillars: litSet ? litSet.size : 0, manganAt, over, ids: rows.flatMap((r) => [r.darkId, r.colorId]) });   // ids は検証用（同じ柱が盤に二度出ていないかを数える）
 
   const shuffled = () => { const a = SPIRITS.map((s) => s.id); for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; const t = a[i]; a[i] = a[j]; a[j] = t; } return a; };
-  function pickDark() { if (!darkPool.length) darkPool = shuffled(); return darkPool.pop(); }   // 一巡したら全部が闇に戻る（月が欠ける）
-  function pickColor(dark) { const pool = litIds.length ? litIds : SPIRITS.map((s) => s.id); let id, n = 0; do { id = pool[(Math.random() * pool.length) | 0]; } while (id === dark && ++n < 8); return id; }
+  const liveIds = () => { const v = new Set(); for (const r of rows) { v.add(r.darkId); v.add(r.colorId); } return v; };
+  function pickDark() {   // 一巡したら全部が闇に戻る（月が欠ける）。ただし盤に出ている柱は飛ばす
+    if (!darkPool.length) darkPool = shuffled();
+    const live = liveIds();
+    let i = darkPool.findIndex((id) => !live.has(id));
+    // 一巡の終わりぎわは、残りが全部 盤に出ていることがある。そこで次の一巡を前倒しで足す
+    // （「29柱ちょうどで一巡」は遊ぶ側に見えない決めごと・SPEC §3。同じ柱が二枚出るのは見えてしまう）
+    if (i < 0) { darkPool = darkPool.concat(shuffled()); i = darkPool.findIndex((id) => !live.has(id)); }
+    return darkPool.splice(i < 0 ? 0 : i, 1)[0];
+  }
+  function pickColor(dark) {
+    // 盤に出ている柱は避ける。避けないと、浄めた柱がまだ数柱しかない序盤に
+    // 同じ極彩の札が画面に3枚並び、絵が壊れて見える（2026-09-01・実画面で確認）
+    const live = liveIds(); live.add(dark);
+    const all = SPIRITS.map((s) => s.id);
+    // ① まず「すでに浄めた柱」から、盤に出ていないもの ② 足りなければ 29柱まで広げる（盤の重なりを優先して避ける）
+    let from = litIds.filter((id) => !live.has(id));
+    if (!from.length) from = all.filter((id) => !live.has(id));
+    if (!from.length) from = all.filter((id) => id !== dark);
+    return from[(Math.random() * from.length) | 0];
+  }
   function pickLanes() {
     let cand = [0, 1, 2, 3];
     if (lastDark[0] >= 0 && lastDark[0] === lastDark[1]) cand = cand.filter((l) => l !== lastDark[0]);   // 同じ筋が3行続けて闇にならない

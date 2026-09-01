@@ -29,9 +29,15 @@ const tap = async (p) => { const r = await p.$eval("#game", (e) => { const q = e
   const srv = await serve(); const base = `http://127.0.0.1:${srv.address().port}/index.html`; let failed = false;
   const check = (name, ok, r) => { console.log((ok ? "✅ " : "❌ ") + name + " " + JSON.stringify(r)); if (!ok) failed = true; };
   // ① 自動プレイで終わりまで（記録は残る・番付へは送らない）
-  { const { browser, page, errors } = await open(base, "#autotest"); const t0 = Date.now(); await page.waitForFunction(() => document.getElementById("overlay").classList.contains("show"), { polling: 300, timeout: 240000 }); const s = await state(page); const mangan = s.stats && s.stats.manganAt ? +(s.stats.manganAt / 1000).toFixed(1) : null;
+  { const { browser, page, errors } = await open(base, "#autotest"); const t0 = Date.now();
+    // 通しながら盤を覗く: 同じ柱が同時に二枚出ていないか（出ると「絵が壊れた」に見える・2026-09-01 実画面で踏んだ）
+    let samples = 0, dup = 0, worst = null;
+    const watch = setInterval(async () => { try { const ids = await page.evaluate(() => (window.__stats && window.__stats().ids) || []); if (!ids.length) return; samples++; const seen = new Set(); for (const i of ids) { if (seen.has(i)) { dup++; worst = i; break; } seen.add(i); } } catch (e) {} }, 200);
+    await page.waitForFunction(() => document.getElementById("overlay").classList.contains("show"), { polling: 300, timeout: 240000 }); clearInterval(watch);
+    const s = await state(page); const mangan = s.stats && s.stats.manganAt ? +(s.stats.manganAt / 1000).toFixed(1) : null;
     check("自動プレイが百八枚を通せる・送信0", s.over && +s.floors >= 108 && s.submits === 0 && errors.length === 0, { floors: s.floors, 満願まで秒: mangan, 通し秒: +((Date.now() - t0) / 1000).toFixed(1), pillars: s.stats && s.stats.pillars, submits: s.submits, errors });
-    check("満願までが 60〜120 秒（受け入れ基準2）", mangan !== null && mangan >= 60 && mangan <= 120, { 満願まで秒: mangan }); await browser.close(); }
+    check("満願までが 60〜120 秒（受け入れ基準2）", mangan !== null && mangan >= 60 && mangan <= 120, { 満願まで秒: mangan });
+    check("同じ柱が盤に二枚出ない", samples > 100 && dup === 0, { 覗いた回数: samples, 重なり: dup, 例: worst }); await browser.close(); }
   // ② わざと終わる
   { const { browser, page, errors } = await open(base, "#autocut"); await page.waitForFunction(() => document.getElementById("overlay").classList.contains("show"), { polling: 300, timeout: 60000 }); const s = await state(page); check("わざと終わる・送信0", s.over && s.submits === 0 && errors.length === 0, { ...s, errors }); await browser.close(); }
   // ③ 稽古は記録を残さない
