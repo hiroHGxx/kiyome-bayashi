@@ -567,7 +567,6 @@
     kotoStep++;
   }
   window.__koto = { scaleFreq, noteFreq, kotoWave, SCALE, KOTO_RING_S, get kotoStep() { return kotoStep; }, get ctxState() { return audioCtx ? audioCtx.state : null; } };   // 検証用
-
   function applySound() { $("mute").classList.toggle("off", !soundOn); }
   $("mute").addEventListener("click", () => { soundOn = !soundOn; saveData.sound = soundOn ? "on" : "off"; saveDirty = true; persistSave(); applySound(); });
 

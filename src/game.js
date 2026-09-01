@@ -179,7 +179,7 @@
 
   function resetRun() {
     over = false; purified = 0; rows = []; darkPool = shuffled(); litIds = []; litSet = new Set();
-    lastDark = [-1, -1]; lastAdj = false; rings.length = 0; floats.length = 0; manganAt = 0; runTally.clear();
+    lastDark = [-1, -1]; lastAdj = false; rings.length = 0; floats.length = 0; manganAt = 0; runTally.clear(); kotoStep = 0;
     for (let i = 0; i < 3; i++) spawnRow();          // 上から3行ぶんが降りてくるところから始まる
     nightId++; pausedUntil = performance.now() + 700; runStart = performance.now(); updateHud();
   }
@@ -198,6 +198,7 @@
   }
   function purify(r) {
     r.cleared = true; purified++;
+    kotoPluck();   // 浄めるたびに琴が次の音を鳴らす（SPEC §5）
     if (!litSet.has(r.darkId)) { litSet.add(r.darkId); litIds.push(r.darkId); }   // 浄めた柱は以後 色の札の側へ回る
     runTally.set(r.darkId, (runTally.get(r.darkId) || 0) + 1);
     rings.push({ cx: r.darkLane * LANE_W + LANE_W / 2, cy: r.y + ROW_H / 2, t: 0 });
@@ -287,7 +288,86 @@
   function restart() { overlay.classList.remove("show"); $("banzuke").classList.remove("show"); $("zukan").classList.remove("show"); resetRun(); }
   $("retry").addEventListener("click", restart);
 
-  /* ---- 音（骨では鳴らさない。MEDIA.md の作法で足す。ミュートは再生中の台詞も止めること） ---- */
+  /* ---- 音（琴・Karplus-Strong 弦合成。SPEC §5）----
+     浄めるたびに次の音を鳴らす。音階は都節音階（陰旋法）＝宵闇の側。ヨナ抜き長音階は明るすぎるので使わない。
+     上行して一巡（5音）したら次の高さへ——scaleFreq(step) は step が5増えるごとに1オクターブ上がるので、
+     kotoStep をただ足すだけで実現できる。ただし932Hz（step 11）を超えたら1オクターブ折り返す
+     （弦モデルは高音ほど N=sr/freq が細り、楽器らしさが崩れる）。合成は御霊おとしの弦の物理モデルを流用、
+     宵あらわし §19.2 がサンプルをやめて同じ手（純合成・音源ファイル無し）にしたのに倣う。
+     BGM・声・満願と夜明けの音・SE9本はこの便では扱わない（SPEC §5・次便へ）。 */
+  const SFX_BUS = 0.9;      // 効果音バスの素の大きさ（式札かさね・宵あらわしと同値）
+  let audioCtx = null, sfxBus = null;
+  function getAudioCtx() {
+    if (!audioCtx) {
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AC();
+        sfxBus = audioCtx.createGain();
+        sfxBus.gain.value = SFX_BUS;
+        sfxBus.connect(audioCtx.destination);
+      } catch (e) { return null; }
+    }
+    if (audioCtx.state === "suspended") { try { audioCtx.resume(); } catch (e) {} }
+    return audioCtx;
+  }
+  const KOTO_RING_S = 2.4, KOTO_DECAY = 0.996, KOTO_TAU_S = 0.8;   // 一音の長さ・弦の減衰・包絡の時定数（宵あらわしと同値）
+  function kotoWave(freq, sr) {   // 弦の波形を焼く（純関数。周波数から決まる擬似乱数＝毎回同じ波）
+    const len = Math.round(sr * KOTO_RING_S);
+    const d = new Float32Array(len);
+    const N = Math.max(2, Math.round(sr / freq));
+    let seed = (Math.round(freq) * 2654435761) >>> 0;
+    const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+    for (let i = 0; i < N; i++) d[i] = rnd() * 2 - 1;
+    for (let j = N; j < len; j++) d[j] = KOTO_DECAY * 0.5 * (d[j - N] + d[j - N + 1]);
+    const tau = sr * KOTO_TAU_S, fade = Math.round(sr * 0.1);
+    let peak = 0;
+    for (let k = 0; k < len; k++) {
+      let e = Math.exp(-k / tau);
+      if (k > len - fade) e *= (len - k) / fade;
+      d[k] *= e;
+      if (Math.abs(d[k]) > peak) peak = Math.abs(d[k]);
+    }
+    if (peak > 0) for (let m = 0; m < len; m++) d[m] *= 0.9 / peak;
+    return d;
+  }
+  const pluckCache = {};
+  function pluckOut(freq, vol) {
+    if (!soundOn) return;
+    const a = getAudioCtx(); if (!a) return;
+    try {
+      const key = Math.round(freq);
+      let buf = pluckCache[key];
+      if (!buf) {
+        const w = kotoWave(freq, a.sampleRate);
+        buf = a.createBuffer(1, w.length, a.sampleRate);
+        buf.getChannelData(0).set(w);
+        pluckCache[key] = buf;
+      }
+      const src = a.createBufferSource(); src.buffer = buf;
+      const g = a.createGain(); g.gain.value = vol;
+      src.connect(g); g.connect(sfxBus || a.destination);
+      src.start(a.currentTime);
+    } catch (e) {}
+  }
+  const KOTO_WOB_VOL = 0.08, KOTO_WOB_HZ = 0.004;   // 連射の機械感を消す揺らぎ（音量±8%・ピッチ±0.4%）
+  const SCALE = [0, 1, 5, 7, 8];                    // 陰旋法（都節音階）
+  function scaleFreq(step) {
+    const oct = Math.floor(step / SCALE.length);
+    const semi = SCALE[step % SCALE.length] + oct * 12;
+    return 220 * Math.pow(2, semi / 12);   // 220Hz（A3）起点＝常に200Hz超（モバイルの床。MEDIA.md）
+  }
+  function noteFreq(step) {
+    while (step > 11) step -= SCALE.length;   // 932Hz（step 11）を上限に1オクターブ（5音）ずつ折り返す
+    return scaleFreq(step);
+  }
+  let kotoStep = 0;   // 浄めた回数そのもの。夜ごとに resetRun() でリセット
+  function kotoPluck() {
+    const freq = noteFreq(kotoStep) * (1 + (Math.random() * 2 - 1) * KOTO_WOB_HZ);
+    const vol = 0.7 * (1 + (Math.random() * 2 - 1) * KOTO_WOB_VOL);
+    pluckOut(freq, vol);
+    kotoStep++;
+  }
+  window.__koto = { scaleFreq, noteFreq, kotoWave, SCALE, KOTO_RING_S, get kotoStep() { return kotoStep; }, get ctxState() { return audioCtx ? audioCtx.state : null; } };   // 検証用
   function applySound() { $("mute").classList.toggle("off", !soundOn); }
   $("mute").addEventListener("click", () => { soundOn = !soundOn; saveData.sound = soundOn ? "on" : "off"; saveDirty = true; persistSave(); applySound(); });
 
