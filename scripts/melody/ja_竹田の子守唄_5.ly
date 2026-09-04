@@ -1,0 +1,1 @@
+ \relative f' { \key c \minor \time 4/4 | \times 2/3 {c8 c d} \times 2/3 {es g4} \times 2/3 { es8 d c}( c4) | c16 c d es \times 2/3 {g8 g es} g2 | \times 2/3 {g8 as c} \times 2/3 {as g4} \times 2/3 {es8 d( c)} c4 | \times 2/3 {es8 g4} \times 2/3 {es8 d c} d2 }\addlyrics { も り も い や が ー る | ぼ ん か ら さ き ー にゃ | ゆ き も ち ら つ く ー | こ も な く ー し |}

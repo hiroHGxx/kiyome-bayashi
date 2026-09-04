@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>浄めばやし UT分析評価レポート</title>
+  <style>
+    :root { color-scheme:light; --ink:#16202a; --muted:#667085; --line:#d6dbe1; --paper:#fff; --soft:#f4f6f8; --accent:#2457d6; --high:#b42318; --medium:#9a6700; --low:#157347; }
+    * { box-sizing:border-box; }
+    body { margin:0; overflow-x:hidden; background:var(--soft); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; line-height:1.65; }
+    main { width:min(1180px,calc(100% - 32px)); max-width:calc(100vw - 32px); margin:32px auto; background:var(--paper); padding:clamp(24px,5vw,60px); border:1px solid var(--line); border-radius:16px; }
+    h1 { font-size:clamp(30px,5vw,48px); line-height:1.12; margin:0 0 12px; }
+    h2 { margin-top:56px; padding-bottom:10px; border-bottom:2px solid var(--ink); }
+    h3 { margin-top:30px; }
+    .meta { display:flex; flex-wrap:wrap; gap:8px 20px; color:var(--muted); }
+    .summary { margin:30px 0; padding:22px; background:#eef3ff; border-left:4px solid var(--accent); border-radius:10px; }
+    .card { margin:18px 0; padding:20px; border:1px solid var(--line); border-radius:12px; break-inside:avoid; }
+    .high { color:var(--high); font-weight:750; } .medium { color:var(--medium); font-weight:750; } .low { color:var(--low); font-weight:750; }
+    table { width:100%; border-collapse:collapse; margin:18px 0 30px; font-size:14px; }
+    th,td { padding:11px; border:1px solid var(--line); vertical-align:top; text-align:left; }
+    th { background:#edf0f4; }
+    .muted { color:var(--muted); }
+    h1,h2,h3,p,.summary,.meta span { overflow-wrap:anywhere; }
+    footer { margin-top:56px; color:var(--muted); font-size:13px; }
+    @media (max-width:800px) { table { display:block; overflow-x:auto; } th,td { min-width:150px; } }
+    @media print { body { background:#fff; } main { width:100%; margin:0; border:0; padding:24px; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>浄めばやし UT分析評価レポート</h1>
+    <div class="meta">
+      <span>UT実施日: 2026-09-02</span><span>モード: hybrid</span><span>参加者: 人間 0名／AI観点 1（AI-P01・検品担当が代行）</span><span>分析日: 2026-09-02</span><span>run-id: q8h3</span><span>分析: 検品担当（結）</span>
+    </div>
+  </header>
+
+  <div class="summary">
+    <strong>本レポートの立場:</strong> 観察事実から課題を構造化し、根本課題を同定する。観察、解釈、改善案を混同しない。
+    改善の論点は最後に「次工程への論点」として分けて書く。<strong>人間の参加者は0名</strong>で、頻度の主張は一切しない。
+    ただし機械の再現率（9通りの遅延を1回ずつ・複数のmiss試行）は実測なのでそのまま使う。
+    <strong>本作は未公開</strong>のため「公開可否」は次章の結論で扱う。
+  </div>
+
+  <section><h2>A. 分析方法とデータ範囲</h2>
+  <ul>
+    <li><strong>入力</strong>: <code>session.json</code>（closed・15件）／<code>results.jsonl</code>（15行）／<code>UT結果ログ_2026-09-02.md</code>／シナリオ2種／<code>docs/SPEC.md</code> §2〜§9／<code>README.md</code>／<code>docs/DEVELOPMENT.md</code> 末尾（2026-09-02節）／<code>src/game.js</code>（<code>begin()</code>・<code>strike()</code>・<code>purify()</code>・<code>showGameOver()</code>・<code>canSubmitScore()</code>）／観察の生データ <code>obs-all.json</code>・<code>obs-all-part2.json</code>・<code>obs-all-part3.json</code>・<code>obs-whiff-retry.json</code>・<code>door-timeline.json</code>。</li>
+    <li><strong>整合</strong>: session の完了ID 15 と results のID集合は一致。participant は AI-P01 のみで匿名。証拠パスは全件 run ディレクトリに実在（付録）。cleanup は completed で本UT自体は問題に含めない。</li>
+    <li><strong>制約</strong>: 音は原則未聴（自動プレイは soundOn=false で始まる設計のため）／わいわいの枠の中は未実施（stub で代替）／実機の体感速度・マナーモードは未実施／人の初見の言語化・迷いは原理的に演じられないので未実施（結果ログの「未実施」欄）。観察スクリプトはCDPのNaN座標事故で2回作り直している（結果ログの制約欄）。</li>
+    <li><strong>枠組み</strong>: Nielsen 10（UI の課題だけに付ける）／効果・効率・満足。前回レポートは無い（本作は初回のUT）。<code>scripts/playtest.js</code>（機械検査9件・全緑）は別観点（終わりまで行くか・送信0か）であり、本UTと補完関係にある（重複ではない）。</li>
+  </ul></section>
+
+  <section><h2>B. エグゼクティブサマリー</h2>
+  <p>15シナリオ中、受入NGが3件（A-2／B-7／E-13）・摩擦ありが同じ3件。<strong>もっとも影響が大きいのはB-7</strong>——この作の中毒性は「浄めるほど速くなる」「叩き続けると曲になる」の2層で成り立っているが（SPEC §1「中毒性の3層」）、<strong>百八枚（満願）という節目そのものには視覚・聴覚どちらの演出も無く</strong>、結果画面に着くまでプレイヤーは自分が節目を超えたことに気づく手がかりを持たない。これは実装の見落としというより、<code>docs/DEVELOPMENT.md</code> が2026-09-02の引き継ぎ時点で自ら「満願の見せ場…この作業は残っていない」と明記している<strong>既知の未着手</strong>であり、今回の実測（108枚到達時にSEカウント・浮き文字とも変化なし）はその記録と矛盾なく一致した。</p>
+  <p><strong>次に見つかったのはE-13</strong>——<code>README.md</code>「番付（全国ランキング）」節が、この作の実装と2点食い違っている（送る点の式・ボードID）。実装と <code>docs/SPEC.md §7-a</code> は一致しており、<strong>ずれているのはREADMEだけ</strong>。あわせて「遊び方」節が未記入のプレースホルダーのまま残っている。README は公開時に読者が最初に読む文書であり、この2点は公開前に直す必要がある。</p>
+  <p><strong>A-2（帳と入力解禁のタイミング）は、精密に測り直した結果、当初の見立てより軽微だった。</strong>入力が解禁される瞬間（1500ms）、帳はまだ左右各26px（画面幅の6.7%）が画面内に残っているが、<code>#door</code> は <code>pointer-events:none</code> のため操作を一切妨げず、1900ms前後にはほぼ完全に消える。SPEC の文言「開ききるまで叩けない」を厳密に読めば一致しないが、実害はほぼ無い。</p>
+  <p>それ以外は仕様どおりに動いている: 闇の札の金枠は実機寸法で判別できる（第1便の不具合は解消済み）・誤操作と取りこぼしは同じ結果画面に収束する・曲の切り替わりは最低枚数と一致する・図鑑と再訪の記録は正しく機能する・稽古モードは束を一切変更しない・記録の無い人の0枚は送らず記録のある人の0枚は送る（設計どおり）・3寸法（縦2種＋横向き）とも表示崩れ無し・文字と押し所のサイズはいずれも基準を満たす。</p>
+  </section>
+
+  <section><h2>C. 観察結果の分布</h2>
+  <table><thead><tr><th>状態</th><th>件数</th><th>シナリオ</th></tr></thead><tbody>
+  <tr><td>完了 / 受入OK</td><td>10</td><td>A-1 / B-3 / B-4 / B-5 / B-6 / C-8 / C-9 / C-10 / D-11 / E-12</td></tr>
+  <tr><td>摩擦あり完了 / 受入NG</td><td>3</td><td>A-2（帳と入力解禁）／B-7（満願の見せ場が無い）／E-13（README食い違い）</td></tr>
+  <tr><td>完了（残るF系）/ 受入OK</td><td>2</td><td>F-14（3寸法の表示）／F-15（文字・押し所の実寸）</td></tr>
+  <tr><td>未実施の次元</td><td>—</td><td>人の言語化・音の実聴・実機の体感速度・わいわいの枠の実物・マナーモード</td></tr>
+  </tbody></table>
+  <table><thead><tr><th>Nielsen / 分類</th><th>件数</th></tr></thead><tbody>
+  <tr><td>#1 可視性（達成の手がかりが無い）</td><td>1（B-7）</td></tr><tr><td>非UI（外向きの文の食い違い）</td><td>1（E-13）＝番号を付けない</td></tr><tr><td>非UI（時間割の精度）</td><td>1（A-2）＝番号を付けない</td></tr><tr><td>該当なし（想定どおり）</td><td>12</td></tr>
+  </tbody></table></section>
+
+  <section><h2>D. 根本課題</h2>
+  <article class="card"><h3>R-1. 満願（108枚）到達に、見せ場が無い</h3>
+    <p><span class="high">確信度: high</span> — 3系統の証拠が一致: ①自動プレイで108枚を跨いだ瞬間の <code>window.__se.counts</code>（whiff/end）がともに変化なし、②同瞬間のcanvasスクリーンショットに浮き文字・鐘の視覚効果が写っていない、③コード読解（<code>src/game.js</code> の <code>purify()</code>）で、SE「end」と浮き文字が発火するのは曲の一巡完了かつ次曲の最低枚数（90/200/300/430/560）到達時<strong>だけ</strong>で、108はどの閾値とも一致しないため、この経路では絶対に発火しない構造だと確認できる。加えて <code>docs/DEVELOPMENT.md</code> 2026-09-02の引き継ぎ節が「満願の見せ場…この作業は残っていない」と<strong>自ら記録している</strong>。</p>
+    <p><strong>因果連鎖:</strong> SPEC §4「見せ場」の行は「節目（108の倍数）ごとに…鐘＋浮き文字」と書かれているが、その後の改訂（曲が替わる夜）で節目の仕組みそのものが「108の倍数」から「曲の一巡＋最低枚数」へ置き換わった → 108という数はもはやどの発火条件とも結びついていない → 満願は結果画面の称号テキスト（「称号：満願」）を読むまで、プレイヤーに伝わる手段が無い。</p>
+    <p><strong>根拠:</strong> O-07（B-7）。<strong>反証:</strong> 「満願はゴールではなく、延長が本編」という設計思想（DEVELOPMENT.mdにオーナー発言として記録あり）に立てば、節目を強調しすぎない方が良い、という見方も成り立つ——ここは実装不備ではなく企画判断の余地がある点として、解釈は分析の外に置く。</p>
+  </article>
+  <article class="card"><h3>R-2. README「番付」節が実装と食い違う</h3>
+    <p><span class="high">確信度: high</span> — 直接比較: README「送る点は合成値 段×100+従の軸」「ボードはmain」に対し、<code>src/game.js:13</code> は <code>RANK_BOARD='main_v1'</code>、<code>reportScore()</code>（277-279行）は <code>purified</code>（浄めた枚数そのもの）をそのまま渡しており桁の合成をしていない。<code>docs/SPEC.md §7-a</code>「合成値＝浄めた枚数そのもの。桁の細工はしない（前作のような『段×100+浄化』は要らない）」と実装は一致しており、<strong>ずれているのはREADMEだけ</strong>。あわせてREADME「遊び方」節の3行が「（タップで何が起きるか）」等の未記入プレースホルダーのまま残っている。</p>
+    <p><strong>因果連鎖:</strong> README は前作（段位制のシリーズ作品）の雛形をそのまま複製し、本作向けに書き換える工程が「番付」節と「遊び方」節の途中で止まっている（クレジット節・開発コマンド節は本作向けに正しく書かれている）→ 公開時に読者が最初に読む文書に、実物と違う説明が残る。</p>
+    <p><strong>根拠:</strong> O-13（E-13）。<strong>受入差分の分類:</strong> 外向きの文と実装の不一致（RULE.md「検める型」の「外向きの文」に該当）。</p>
+  </article>
+  <article class="card"><h3>R-3. 入力解禁の瞬間、帳はまだ完全には開ききっていない（実害は小さい）</h3>
+    <p><span class="medium">確信度: medium（影響は小）</span> — 実測: 入力解禁時刻（1500ms）における door-l/door-rの残り幅は左右各26px（画面幅390pxの6.7%）。SPEC本文「開ききるまで叩けない」を厳密に読むと一致しない。ただし <code>#door</code> は <code>pointer-events:none</code> と明記されており、この残り幅がタップの成否に影響することは無い。1900ms前後にはほぼ完全に消える（残り-1px）。</p>
+    <p><strong>因果連鎖:</strong> <code>begin()</code> の <code>pausedUntil = performance.now() + 1500</code>（入力解禁）と、帳のCSSトランジション（<code>open</code>クラス付与から1.5秒・付与自体は<code>begin()</code>から500ms後）が、独立した2つの数値として設計されている → 500ms（帳の起動遅延）ぶんだけ、入力解禁が帳の「起動から1.5秒後」より早く訪れる計算になる（実測もこれと整合）。</p>
+    <p><strong>根拠:</strong> O-02（A-2）。<strong>反証:</strong> 実測上、影響が見えるのは画面の左右端26pxのみで、盤面中央のレーン1・2は1500ms時点で完全に見えている。人が違和感を持つかは未実施（inferred）。</p>
+  </article>
+  <article class="card"><h3>R-4. 記録がある人の0枚は番付へ送られる（課題ではなく、把握しておく事実）</h3>
+    <p><span class="low">確信度: low（課題かどうかは未確定・意図された設計）</span> — 実測: 記録が一度も無い状態での0枚は <code>submitScore</code> 0回。事前にbest=15を仕込んだ状態での0枚は <code>submitScore</code> 1回（score 0）、結果画面に順位行も出た。<code>canSubmitScore()</code> のコメント「記録が無い人の0だけ送らない（宵あらわし式）」、README「送らない経路: 一度も記録が無い人の0段の夜」とも、実測はそのとおりに一致する。</p>
+    <p><strong>因果連鎖:</strong> 意図された設計であり、シリーズ内の「宵あらわし」と同じ規則を踏襲している。ここでは「番付に0の行が積まれうる」という事実だけを記録に残す。</p>
+    <p><strong>根拠:</strong> O-11（E-12）。</p>
+  </article>
+  </section>
+
+  <section><h2>E. インパクト分析</h2>
+  <table><thead><tr><th>根本課題</th><th>効果（達成できるか）</th><th>効率</th><th>満足・信頼</th><th>重大性</th></tr></thead><tbody>
+  <tr><td>R-1</td><td>—（遊びの進行自体は妨げない）</td><td>—</td><td>「叩き続けると旋律になる／浄めるほど速くなる」という中毒性の芯に、108という節目だけが乗っていない。結果画面まで気づけない</td><td class="high">高</td></tr>
+  <tr><td>R-2</td><td>—</td><td>—</td><td>公開直後に読者・本家関係者がREADMEと実物のズレに気づきうる（式札かさねの本家入り打診が進行中という文脈で、外向きの文の正確さは軽視できない）</td><td class="high">高</td></tr>
+  <tr><td>R-3</td><td>操作は一切妨げない（pointer-events:none）</td><td>—</td><td>SPEC本文の言い回しと実測がわずかにずれているだけ。プレイヤー体感への影響は小さいと見積もる（未検証）</td><td class="low">低</td></tr>
+  <tr><td>R-4</td><td>—</td><td>—</td><td>設計どおり。番付に0の行が積まれる余地があるという事実の記録</td><td class="low">低</td></tr>
+  </tbody></table></section>
+
+  <section><h2>F. UX層別分析</h2>
+  <table><thead><tr><th>層</th><th>該当</th><th>読み</th></tr></thead><tbody>
+  <tr><td>戦略</td><td>—</td><td>「叩くほど、闇に沈んだ御霊が一柱ずつ色を取り戻す」という作品の狙い自体は観察に矛盾しない</td></tr>
+  <tr><td>要件</td><td>R-1・R-2</td><td>SPEC §4の記述が旧仕組み（節目=108の倍数）を引きずったまま／READMEが前作の雛形のまま。どちらも「文書を実装に追いつかせる」工程が残っている</td></tr>
+  <tr><td>構造</td><td>R-3</td><td>時間割（帳のCSSトランジションと入力解禁の数値）が独立して設計されている層の問題。実害は小さい</td></tr>
+  <tr><td>骨格</td><td>—</td><td>該当なし（骨格は妥当に動いている）</td></tr>
+  <tr><td>表層</td><td>R-4</td><td>意図された仕様の確認。表層の見た目には影響しない</td></tr>
+  </tbody></table></section>
+
+  <section><h2>G. 個別観察</h2>
+  <table><thead><tr><th>ID</th><th>シナリオ</th><th>観点</th><th>task</th><th>acceptance</th><th>観察（要約）</th><th>証拠強度</th><th>影響</th><th>UX層</th><th>根本課題</th></tr></thead><tbody>
+<tr><td>O-01</td><td>A-1</td><td>AI observation</td><td>completed</td><td>ok</td><td>案内カードは1606msで押せる状態。題字・副題・遊び方4行・釦3つが正しく表示</td><td>direct</td><td>効率</td><td>骨格</td><td>—</td></tr>
+<tr><td>O-02</td><td>A-2</td><td>AI observation</td><td>completed-with-friction</td><td>ng</td><td>入力解禁（1500ms）時点で帳の残り幅は左右各26px。pointer-events:noneのため操作には無影響。1900ms前後で消滅</td><td>direct（座標の実測）</td><td>満足（軽微）</td><td>構造</td><td>R-3</td></tr>
+<tr><td>O-03</td><td>B-3</td><td>AI observation</td><td>completed</td><td>ok</td><td>帳が完全に開ききってからのタップは狙った筋どおりに浄化した</td><td>direct</td><td>効果</td><td>骨格</td><td>—</td></tr>
+<tr><td>O-04</td><td>B-4</td><td>AI observation</td><td>completed</td><td>ok</td><td>闇の札の金枠は実機寸法で3枚とも判別できる（第1便の不具合は解消済み）</td><td>direct（回帰確認）</td><td>効果</td><td>表層</td><td>—</td></tr>
+<tr><td>O-05</td><td>B-5</td><td>AI observation</td><td>completed</td><td>ok</td><td>誤操作（色の札）と取りこぼし（放置5123ms）は同一の結果画面文言に収束する</td><td>direct</td><td>信頼</td><td>骨格</td><td>—</td></tr>
+<tr><td>O-06</td><td>B-6</td><td>AI observation</td><td>completed</td><td>ok</td><td>曲の切り替わり（荒城の月→朧月夜）は96枚（最低枚数90以上）で発生。設計どおり</td><td>direct</td><td>効果</td><td>要件</td><td>—</td></tr>
+<tr><td>O-07</td><td>B-7</td><td>AI observation</td><td>completed-with-friction</td><td>ng</td><td>108枚到達時にSEカウント・浮き文字とも変化なし。満願は結果画面まで伝わらない</td><td>direct（コード確認込み）</td><td>満足</td><td>要件</td><td>R-1</td></tr>
+<tr><td>O-08</td><td>C-8</td><td>AI observation</td><td>completed</td><td>ok</td><td>結果画面の全項目（称号・枚数・最高・柱の絵・図鑑入口）が表示され、375×667でも送り無しで収まる</td><td>direct</td><td>満足</td><td>表層</td><td>—</td></tr>
+<tr><td>O-09</td><td>C-9</td><td>AI observation</td><td>completed</td><td>ok</td><td>図鑑29升目・灯る/灯らないの表示・開閉とも正常</td><td>direct</td><td>満足</td><td>表層</td><td>—</td></tr>
+<tr><td>O-10</td><td>C-10</td><td>AI observation</td><td>completed</td><td>ok</td><td>再読み込み後、1797msで「最高」に前の夜の記録が出る。0が見える瞬間は無し</td><td>direct</td><td>信頼</td><td>骨格</td><td>—</td></tr>
+<tr><td>O-11</td><td>D-11</td><td>AI observation</td><td>completed</td><td>ok</td><td>稽古は2つの入り方とも機能し、外し・取りこぼしでも終わらず、束は不変・送信0回</td><td>direct</td><td>効果</td><td>骨格</td><td>—</td></tr>
+<tr><td>O-12</td><td>E-12</td><td>AI observation</td><td>completed</td><td>ok</td><td>記録なしの0枚は送らない・記録ありの0枚は送る、README/コード双方の記述と一致</td><td>direct</td><td>信頼</td><td>要件</td><td>R-4</td></tr>
+<tr><td>O-13</td><td>E-13</td><td>AI observation</td><td>completed-with-friction</td><td>ng</td><td>SDK無し環境の挙動は正常。README「番付」節がボードID・合成式で実装と食い違う。「遊び方」節が未記入</td><td>direct（文書と実装の直接比較）</td><td>信頼</td><td>要件</td><td>R-2</td></tr>
+<tr><td>O-14</td><td>F-14</td><td>AI observation</td><td>completed</td><td>ok</td><td>375×667・390×844・844×390横向きの3寸法とも表示崩れ・はみ出し無し</td><td>direct</td><td>効果</td><td>骨格</td><td>—</td></tr>
+<tr><td>O-15</td><td>F-15</td><td>AI observation</td><td>completed</td><td>ok</td><td>本文文字は12px未満なし。押せる要素は最小30×30pxで24px基準を満たす</td><td>direct</td><td>効果</td><td>骨格</td><td>—</td></tr>
+  </tbody></table>
+  <p class="muted">全文は <code>runs/2026-09-02-q8h3/UT結果ログ_2026-09-02.md</code>。「観点」はすべて AI observation（人間参加者は0名）。</p>
+  </section>
+
+  <section><h2>H. 参加者・観点別の寄与</h2>
+  <p>AI-P01（検品担当の代行）1観点のみ。人間の参加者は0名。AIの寄与は「時刻・座標・状態・再現率」の直接観察と「コードとの突き合わせ」に限られ、「迷い」「分かりにくさ」「音の心地よさ」は一切測っていない。逆に、人がやらない反復（同じ操作の9通りの遅延を1回ずつ・複数のmiss試行）ができたので、R-3の境界時刻は<strong>人のテストでは偶然にしか出ない精度</strong>が取れた。</p>
+  </section>
+
+  <section><h2>I. 結論</h2>
+  <p><strong>公開可否:</strong> 未公開作品なので「条件付きで進めてよい」——<strong>R-2（README食い違い）は公開前に必ず直す</strong>（読者が最初に読む文書のため）。<strong>R-1（満願の見せ場）は公開を止める理由にはならない</strong>が、この作の題名・中毒性の説明（「叩き続けると旋律になる」）と関わる企画判断であり、直すかどうかはオーナー・企画担当の裁定が要る。</p>
+  <p><strong>着手順（捨てる線ではない）:</strong> ① R-2（README「番付」節と「遊び方」節を実装・SPECに合わせて書き直す。作業量は小さい） → ② R-1（満願に見せ場を足すか、「延長が本編」という設計のまま行くかの企画判断。DEVELOPMENT.mdの引き継ぎ済みTODOそのもの） → ③ R-3（帳の500msの起動遅延と入力解禁1500msの関係を、数値として揃えるかどうか。実害は小さいので優先度は低い） → ④ R-4は直す対象ではなく、把握しておく事実として記録に残す。</p>
+  <p><strong>次に人で埋めるもの:</strong> 音の実聴（琴の旋律・音量バランス）／速さの体感（VMAX=520px/秒が延長でどこまで追えるか。DEVELOPMENT.md自身が「実機の延長で見る（宿題）」としている）／わいわいの枠の中の本物の番付／マナーモードでの挙動。</p>
+  <p><strong>次工程への論点（改善案・分析とは別枠）:</strong> R-1は「108到達時に鐘＋浮き文字を足す」「あえて足さず延長を主役にする」の二択で、企画の裁定が要る。R-2は文書の書き直しのみでコードは触らない。R-3は <code>pausedUntil</code> を帳の起動遅延（500ms）＋トランジション（1.5秒）の合計（2000ms）に揃えるか、現状（1500ms）を据え置くかの二択——後者を選ぶなら、SPEC本文の「開ききるまで叩けない」という言い回しを実態（「帳の大部分が開いたら叩ける」）に合わせて直す選択肢もある。</p>
+  </section>
+
+  <section><h2>付録. 証拠と追跡対応</h2>
+  <table><thead><tr><th>ID</th><th>シナリオ</th><th>証拠</th></tr></thead><tbody>
+<tr><td>O-01</td><td>A-1</td><td><code>screenshots/A1-open-300ms.png</code><br><code>screenshots/A1-ready-card.png</code><br><code>obs-all.json A-1・A-1-pc</code></td></tr>
+<tr><td>O-02</td><td>A-2</td><td><code>screenshots/door-timeline-1500ms.png</code><br><code>screenshots/door-timeline-1700ms.png</code><br><code>screenshots/door-timeline-1900ms.png</code><br><code>door-timeline.json</code><br><code>obs-all.json A-2-timeline・A-2-input-window</code></td></tr>
+<tr><td>O-03</td><td>B-3</td><td><code>screenshots/A3-before-tap.png</code><br><code>screenshots/A3-after-tap.png</code><br><code>obs-all.json A-3</code></td></tr>
+<tr><td>O-04</td><td>B-4</td><td><code>screenshots/B4-purify-early.png</code><br><code>screenshots/B4-purify-8.png</code></td></tr>
+<tr><td>O-05</td><td>B-5</td><td><code>screenshots/B5-miss-wronglane.png</code><br><code>screenshots/B5-miss-timeout.png</code></td></tr>
+<tr><td>O-06</td><td>B-6</td><td><code>screenshots/B6-stage-0-荒城の月.png</code><br><code>screenshots/B6-stage-1-朧月夜.png</code><br><code>obs-all.json B-6-transitions</code></td></tr>
+<tr><td>O-07</td><td>B-7</td><td><code>screenshots/B7-at-108.png</code><br><code>screenshots/B7-result-card.png</code><br><code>screenshots/B7-whiff-on-clear.png</code><br><code>obs-all.json B-7-mangan</code><br><code>obs-whiff-retry.json</code><br><code>src/game.js:239,251</code><br><code>docs/DEVELOPMENT.md</code> 2026-09-02節</td></tr>
+<tr><td>O-08</td><td>C-8</td><td><code>screenshots/F-375-result-buttons.png</code><br><code>screenshots/F-375x667-result-card.png</code></td></tr>
+<tr><td>O-09</td><td>C-9</td><td><code>screenshots/C9-zukan-open.png</code><br><code>obs-all.json C-9-zukan</code></td></tr>
+<tr><td>O-10</td><td>C-10</td><td><code>screenshots/C10-reload-card.png</code></td></tr>
+<tr><td>O-11</td><td>D-11</td><td><code>screenshots/D-practice-result.png</code><br><code>screenshots/D-practice-triple-tap-label.png</code></td></tr>
+<tr><td>O-12</td><td>E-12</td><td><code>obs-all-part2.json E-zero-no-history・E-zero-with-history</code><br><code>screenshots/E-zero-with-history.png</code></td></tr>
+<tr><td>O-13</td><td>E-13</td><td><code>screenshots/E-no-sdk-result.png</code><br><code>README.md</code> 10-23行目<br><code>src/game.js:13,277-279</code><br><code>docs/SPEC.md §7-a</code></td></tr>
+<tr><td>O-14</td><td>F-14</td><td><code>screenshots/F-375x667.png</code><br><code>screenshots/F-390x844.png</code><br><code>screenshots/F-844x390-landscape.png</code></td></tr>
+<tr><td>O-15</td><td>F-15</td><td><code>obs-all-part2.json F-hit-targets-title・F-result-card-375</code></td></tr>
+  </tbody></table>
+  <p class="muted">設定: <code>ut.config.yaml</code>／シナリオ: <code>docs/ut/scenarios/UTシナリオ_20260902_*.html</code>／run: <code>docs/ut/runs/2026-09-02-q8h3/</code>（session.json・results.jsonl・baseline.md・cleanup-plan.md・obs-*.json・door-timeline.json・screenshots 29枚）。</p>
+  </section>
+
+  <footer>Generated from UT evidence · 浄めばやし 2026-09-02 v1 · 分析: 検品担当（結）</footer>
+</main>
+</body>
+</html>

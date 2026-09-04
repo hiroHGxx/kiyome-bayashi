@@ -1,0 +1,58 @@
+[
+  {
+    "tag": "C-10-reload",
+    "t": "2026-09-02T14:51:37.892Z",
+    "finalPurified": "5枚",
+    "savedLS": "{\"best\":5,\"title\":\"宵の口\",\"titleRank\":5,\"sound\":\"off\",\"clears\":0,\"spirits\":{\"shion\":1,\"oto\":1,\"naruka\":1,\"oen\":1,\"emma\":1},\"songMax\":0}",
+    "readyAtMs": 1797,
+    "hudAtReady": {
+      "best": "5"
+    },
+    "card": {
+      "hidden": false,
+      "text": "これまでの誉れ：宵の口"
+    }
+  },
+  {
+    "tag": "B-7-whiff-on-clear",
+    "t": "2026-09-02T14:51:57.358Z",
+    "statsBefore": {
+      "purified": 17,
+      "pillars": 17,
+      "manganAt": 0,
+      "over": false,
+      "stage": 0,
+      "rank": "06",
+      "song": "荒城の月",
+      "songStep": 17,
+      "ids": [
+        "yui",
+        "karma",
+        "shion",
+        "atoza",
+        "tart",
+        "orochi",
+        "nekomata",
+        "anne",
+        "oen",
+        "dan",
+        "aun",
+        "hinanojo"
+      ]
+    },
+    "beforeForce": {
+      "whiff": 0,
+      "end": 0
+    },
+    "afterForce": {
+      "whiff": 1,
+      "end": 0
+    },
+    "result": {
+      "cleared": false,
+      "heading": "夜が明けた",
+      "score": "17枚"
+    },
+    "whiffFiredOnClear": true
+  }
+]

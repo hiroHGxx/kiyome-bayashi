@@ -1,0 +1,13 @@
+[
+  { "targetMs": 300, "elapsedMs": 302, "doorShowClass": true, "openClass": false, "lRight": 197, "rLeft": 193, "transform": "none" },
+  { "targetMs": 500, "elapsedMs": 502, "doorShowClass": true, "openClass": false, "lRight": 197, "rLeft": 193, "transform": "none" },
+  { "targetMs": 700, "elapsedMs": 702, "doorShowClass": true, "openClass": true, "lRight": 194, "rLeft": 196, "transform": "matrix(1, 0, 0, 1, -2.9278, 0)" },
+  { "targetMs": 900, "elapsedMs": 903, "doorShowClass": true, "openClass": true, "lRight": 182, "rLeft": 208, "transform": "matrix(1, 0, 0, 1, -15.3365, 0)" },
+  { "targetMs": 1100, "elapsedMs": 1101, "doorShowClass": true, "openClass": true, "lRight": 153, "rLeft": 237, "transform": "matrix(1, 0, 0, 1, -44.8273, 0)" },
+  { "targetMs": 1300, "elapsedMs": 1303, "doorShowClass": true, "openClass": true, "lRight": 74, "rLeft": 316, "transform": "matrix(1, 0, 0, 1, -123.379, 0)" },
+  { "targetMs": 1500, "elapsedMs": 1502, "doorShowClass": true, "openClass": true, "lRight": 26, "rLeft": 364, "transform": "matrix(1, 0, 0, 1, -171.704, 0)" },
+  { "targetMs": 1700, "elapsedMs": 1702, "doorShowClass": true, "openClass": true, "lRight": 7, "rLeft": 383, "transform": "matrix(1, 0, 0, 1, -189.945, 0)" },
+  { "targetMs": 1900, "elapsedMs": 1902, "doorShowClass": true, "openClass": true, "lRight": -1, "rLeft": 391, "transform": "matrix(1, 0, 0, 1, -198.199, 0)" },
+  { "targetMs": 2100, "elapsedMs": 2102, "doorShowClass": true, "openClass": true, "lRight": -2, "rLeft": 392, "transform": "matrix(1, 0, 0, 1, -199.301, 0)" },
+  { "targetMs": 2300, "elapsedMs": 2302, "doorShowClass": false, "openClass": true, "lRight": 0, "rLeft": 0, "transform": "none" }
+]

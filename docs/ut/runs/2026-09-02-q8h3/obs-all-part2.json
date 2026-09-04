@@ -1,0 +1,288 @@
+[
+  {
+    "tag": "C-10-reload-ERROR",
+    "t": "2026-09-02T14:39:15.151Z",
+    "message": "Protocol error (Input.dispatchMouseEvent): Invalid parameters Failed to deserialize params.x - BINDINGS: double value expected at position 58"
+  },
+  {
+    "tag": "D-practice-button",
+    "t": "2026-09-02T14:39:26.075Z",
+    "before": null,
+    "afterMissStillPlaying": true,
+    "afterWaitStillPlaying": true,
+    "result": {
+      "over": true,
+      "best": "最高 0枚（稽古）",
+      "title": "宵の口"
+    },
+    "afterLS": "{\"best\":0,\"title\":\"\",\"titleRank\":-1,\"sound\":\"on\",\"clears\":0,\"spirits\":{},\"songMax\":0}",
+    "submits": 0,
+    "lsUnchanged": false
+  },
+  {
+    "tag": "D-practice-tripletap",
+    "t": "2026-09-02T14:39:28.935Z",
+    "before": {
+      "text": "／ 稽古（外しても終わらない・記録は残らない）",
+      "hidden": false
+    }
+  },
+  {
+    "tag": "E-zero-no-history",
+    "t": "2026-09-02T14:39:34.352Z",
+    "submits": []
+  },
+  {
+    "tag": "E-zero-with-history",
+    "t": "2026-09-02T14:39:40.070Z",
+    "submits": [
+      [
+        "main_v1",
+        0,
+        {
+          "title": "宵の口"
+        }
+      ]
+    ],
+    "rankShown": true
+  },
+  {
+    "tag": "E-no-sdk",
+    "t": "2026-09-02T14:39:45.597Z",
+    "noRank": true,
+    "hasErrText": false,
+    "waiwaiDefined": false
+  },
+  {
+    "tag": "F-viewport",
+    "t": "2026-09-02T14:39:48.650Z",
+    "name": "375x667",
+    "layout": {
+      "vw": 375,
+      "vh": 667,
+      "canvas": {
+        "w": 364,
+        "h": 547,
+        "bottom": 623,
+        "top": 76
+      },
+      "headerTop": 0,
+      "footerBottom": 667,
+      "overflowsViewport": false,
+      "muteSize": {
+        "w": 30,
+        "h": 30
+      }
+    }
+  },
+  {
+    "tag": "F-viewport",
+    "t": "2026-09-02T14:39:51.767Z",
+    "name": "390x844",
+    "layout": {
+      "vw": 390,
+      "vh": 844,
+      "canvas": {
+        "w": 390,
+        "h": 585,
+        "bottom": 731,
+        "top": 146
+      },
+      "headerTop": 0,
+      "footerBottom": 844,
+      "overflowsViewport": false,
+      "muteSize": {
+        "w": 30,
+        "h": 30
+      }
+    }
+  },
+  {
+    "tag": "F-viewport",
+    "t": "2026-09-02T14:39:54.823Z",
+    "name": "844x390-landscape",
+    "layout": {
+      "vw": 844,
+      "vh": 390,
+      "canvas": {
+        "w": 191,
+        "h": 287,
+        "bottom": 363,
+        "top": 76
+      },
+      "headerTop": 0,
+      "footerBottom": 390,
+      "overflowsViewport": false,
+      "muteSize": {
+        "w": 30,
+        "h": 30
+      }
+    }
+  },
+  {
+    "tag": "F-result-card-375",
+    "t": "2026-09-02T14:40:00.415Z",
+    "box": {
+      "cardH": 323,
+      "cardBottom": 495,
+      "retryBottom": 480,
+      "retryInView": true,
+      "vh": 667
+    }
+  },
+  {
+    "tag": "F-hit-targets-title",
+    "t": "2026-09-02T14:40:02.881Z",
+    "measures": [
+      {
+        "tag": "DIV",
+        "id": null,
+        "w": 13,
+        "h": 17,
+        "fontSize": "12px",
+        "text": "浄"
+      },
+      {
+        "tag": "DIV",
+        "id": null,
+        "w": 26,
+        "h": 17,
+        "fontSize": "12px",
+        "text": "最高"
+      },
+      {
+        "tag": "DIV",
+        "id": null,
+        "w": 38,
+        "h": 17,
+        "fontSize": "12px",
+        "text": "柱"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "mute",
+        "w": 30,
+        "h": 30,
+        "fontSize": "14px",
+        "text": "♪"
+      },
+      {
+        "tag": "FOOTER",
+        "id": null,
+        "w": 390,
+        "h": 44,
+        "fontSize": "12px",
+        "text": "『月蝕綺譚 -Luna Occulta-』二次創"
+      },
+      {
+        "tag": "DIV",
+        "id": null,
+        "w": 292,
+        "h": 17,
+        "fontSize": "12px",
+        "text": "— 月蝕綺譚 -Luna Occulta- 二次"
+      },
+      {
+        "tag": "LI",
+        "id": null,
+        "w": 292,
+        "h": 42,
+        "fontSize": "13px",
+        "text": "四筋を落ちてくる闇の札を、下から順にタップして浄"
+      },
+      {
+        "tag": "LI",
+        "id": null,
+        "w": 292,
+        "h": 42,
+        "fontSize": "13px",
+        "text": "見るのは筋（たて列）だけ。指の高さは要らない"
+      },
+      {
+        "tag": "LI",
+        "id": null,
+        "w": 292,
+        "h": 42,
+        "fontSize": "13px",
+        "text": "色を取り戻した札を叩く／闇の札を取りこぼす＝夜が"
+      },
+      {
+        "tag": "LI",
+        "id": null,
+        "w": 292,
+        "h": 42,
+        "fontSize": "13px",
+        "text": "浄めるほど落ちが速くなる。百八枚で満願、その先は"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "start",
+        "w": 292,
+        "h": 49,
+        "fontSize": "15px",
+        "text": "月夜に入る"
+      },
+      {
+        "tag": "DIV",
+        "id": null,
+        "w": 292,
+        "h": 17,
+        "fontSize": "12px",
+        "text": "※ 音が鳴ります（イヤホン推奨）"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "start-silent",
+        "w": 292,
+        "h": 37,
+        "fontSize": "12px",
+        "text": "静かに入る — 音なし"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "start-practice",
+        "w": 292,
+        "h": 52,
+        "fontSize": "12px",
+        "text": "稽古で入る — 外しても終わらない・記録は残らな"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "zukan-open",
+        "w": 0,
+        "h": 0,
+        "fontSize": "16px",
+        "text": "図鑑 0/29 ›"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "retry",
+        "w": 0,
+        "h": 0,
+        "fontSize": "14px",
+        "text": "もう一夜"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "zk-close",
+        "w": 0,
+        "h": 0,
+        "fontSize": "13.3333px",
+        "text": "✕"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "bz-close",
+        "w": 0,
+        "h": 0,
+        "fontSize": "13.3333px",
+        "text": "✕"
+      }
+    ]
+  },
+  {
+    "tag": "B-7-whiff-on-clear-ERROR",
+    "t": "2026-09-02T14:40:08.547Z",
+    "message": "Protocol error (Input.dispatchMouseEvent): Invalid parameters Failed to deserialize params.x - BINDINGS: double value expected at position 58"
+  }
+]

@@ -1,0 +1,1 @@
+ \relative f' { \key c \major \time 4/4 | \times 2/3 {c8 c d} \times 2/3 {e g4} \times 2/3 { e8 d c}( c4) | c16 c d e \times 2/3 {g8 g e} g2 | \times 2/3 {e8 g a} \times 2/3 {c a g} \times 2/3 {g e( d)} c4 | e8 g \times 2/3 {e d c} d2 }\addlyrics { ね ん ね ね ん ね ー と | ね た こ は か わ ー い | お き て な く ー こ ー は | つ ら に ー く い |}

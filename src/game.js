@@ -4,19 +4,37 @@
   const W = 480, H = 720;                       // 論理寸法（canvas 内部）。実寸は main の箱に合わせて縮む
   const LANES = 4, LANE_W = 120, ROW_H = 180;   // 縦四筋・筋幅120・行高180（札絵 1024×1536＝2:3 が切り取りも余白もなく収まる）
   const MISS_Y = H - ROW_H;                     // 未浄の行がここを越えたら取りこぼし（＝札が下端から出はじめる前に叩く）
-  const MANGAN = 108;                           // 百八枚で満願。その先は延長（枚数は青天井）
-  const V0 = 145, ACC = 1.006, VMAX = 520;      // 初速 / 1枚ごとの倍率 / 上限（SPEC §3 の表）
-  const ASSIST_ROWS = 3, ASSIST = 0.7;          // 助走: 最初の3行だけ V0×0.7
+  const V0 = 145, ACC = 1.006, VMAX = 520;      // 曲線の基点 / 1枚ごとの倍率 / 第一の上限（SPEC §3 の表）
+  const ACC2 = 1.0008, VMAX2 = 720;             // 第一の上限に届いたあとの緩い傾き（0.08%/枚）と第二の上限（0.25秒/行）。2026-09-03 オーナー裁定「ゆるい傾きで速くしたい」
+  const N1 = Math.ceil(Math.log(VMAX / V0) / Math.log(ACC));   // 第一の上限に届く枚数（214）
+  const VFLOOR = 180;                           // 序盤の床（1.0秒/行）。曲線が床を超える37枚め以降は曲線どおり（2026-09-02 オーナー裁定「最初をもう少し速く」）
+  const ASSIST_ROWS = 3, ASSIST = 0.85;         // 助走: 最初の3行だけ 床×0.85
   const SLUG = "kiyome-bayashi";
   const SAVE_KEY = window.SAVE_KEY = SLUG + "_save";   // 記録は1キーの束（best/title/titleRank/sound）
   const RANK_BOARD = "main_v1";                 // 合成値＝浄めた枚数そのもの（SPEC §7-a・桁の細工はしない）
   const MAX_KEEP = 99999;                        // 束から読む枚数の上限。範囲外は丸めずに捨てる
-  const TITLES = [[0, "宵の口"], [12, "拍取り"], [36, "囃子方"], [72, "音頭取り"], [108, "満願"]];
-  const titleFor = (n) => TITLES.reduce((t, [k, s]) => (n >= k ? s : t), TITLES[0][1]);
+  const TITLES = [[0, "聞き役"], [12, "拍取り"], [36, "囃子方"], [72, "音頭取り"]];   // 称号: 最初の曲の間は枚数で、2曲目からは曲の称号（SONGS.title）。「宵の口」はシリーズで3回使用済みのため差し替え（文章担当 2026-09-03）
+  // 色の札の段は進行で上がる（SPEC §4「段が上がる夜」・2026-09-02 オーナー裁定）。闇の札は段03で固定
+  // 本歌（SPEC §4「曲が替わる夜」・§5）。誰もが知る版権切れの曲を、浄めるたびに1音ずつ。曲ごとに色の札の段と空の演出を持つ。
+  // 譜は Wikipedia の楽譜データ／Wikimedia Commons の楽譜から機械で読んだ（scripts/melody/）。
+  // 切り替えは「曲が一巡し終えた時」だけ（min＝次の曲へ進める最低枚数。届いていなければ同じ曲をもう一巡）
+  const SONGS = [
+    { name: "荒城の月", title: "聞き役", rank: "06", min: 0, sky: "waxing", bg: "kojo", notes: [69, 69, 74, 76, 77, 76, 74, 70, 70, 69, 67, 69, 69, 69, 74, 76, 77, 76, 74, 70, 67, 69, 69, 62, 65, 65, 64, 62, 70, 70, 69, 67, 69, 70, 70, 69, 69, 69, 74, 76, 77, 76, 74, 70, 67, 69, 69, 62] },   // 滝廉太郎 1901（山田耕筰版）。月が透明から浮かび上がる
+    { name: "朧月夜", voice: "koe_s1", title: "朧払い", rank: "08", min: 90, sky: "haze", bg: "oboro", notes: [66, 66, 62, 64, 66, 69, 69, 71, 69, 64, 66, 62, 64, 69, 66, 69, 69, 66, 67, 69, 74, 74, 76, 74, 69, 71, 66, 64, 64, 62, 69, 69, 74, 74, 74, 76, 74, 71, 69, 69, 66, 69, 71, 66, 66, 64, 62, 64, 66, 62, 66, 67, 69, 74, 71, 69, 71, 66, 64, 64, 62] },   // 岡野貞一 1914。朧がかかる
+    { name: "さくらさくら", voice: "koe_s2", title: "花吹雪", rank: "09", min: 200, sky: "sakura", bg: "sakura", notes: [69, 69, 71, 69, 69, 71, 69, 71, 72, 71, 69, 71, 69, 65, 64, 60, 64, 65, 64, 64, 60, 59, 69, 71, 72, 71, 69, 71, 69, 65, 64, 60, 64, 65, 64, 64, 60, 59, 69, 69, 71, 69, 69, 71, 64, 65, 71, 69, 65, 64] },   // 伝承（箏の手ほどき曲）。夜桜が舞う
+    { name: "山の魔王", voice: "koe_s3", title: "紅蝕", rank: "10", min: 300, sky: "eclipse", bg: "eclipse", notes: [66, 59, 61, 62, 64, 66, 62, 66, 65, 61, 65, 64, 60, 64, 59, 61, 62, 64, 66, 62, 66, 71, 69, 66, 62, 66, 69] },   // グリーグ 1875（主題）。血月＝皆既へ
+    { name: "月光", voice: "koe_s4", title: "月還り", rank: "10", min: 430, sky: "return", bg: "gekko", notes: [68, 73, 76, 68, 73, 76, 68, 73, 76, 68, 73, 76, 68, 73, 76, 68, 73, 76, 68, 73, 76, 68, 73, 76, 69, 73, 76, 69, 73, 76, 69, 74, 78, 69, 74, 78, 68, 72, 78, 68, 73, 76, 68, 73, 75, 66, 72, 75] },   // ベートーヴェン 1801（冒頭）。月が還る・水面に月の道
+    { name: "浜辺の歌", voice: "koe_s5", title: "渚の唄い手", rank: "10", min: 560, sky: "dawn", bg: "hamabe", notes: [63, 63, 68, 70, 72, 70, 68, 70, 65, 68, 67, 65, 63, 68, 72, 70, 68, 70, 70, 63, 63, 68, 70, 72, 70, 68, 70, 65, 68, 67, 65, 63, 72, 63, 70, 68, 68, 75, 75, 70, 75, 71, 75, 72, 77, 77, 73, 68, 70, 75, 75, 63, 63, 68, 70, 72, 70, 68, 70, 65, 68, 67, 65, 63, 72, 63, 70, 68, 68] },   // 成田為三 1916。水平線にわずかな明け
+  ];
+  const RANKS = [...new Set(["03", ...SONGS.map((s) => s.rank)])];
+  // 空の絵（Lovart 生成・SPEC §4）。背景は曲ごと、月と額装は一枚。道は文字列で置く（build-dist の正規表現の都合）
+  const SKY = { moon: "assets/art/sky/moon.webp", frame: "assets/art/sky/frame.webp", kojo: "assets/art/sky/bg_kojo.webp", oboro: "assets/art/sky/bg_oboro.webp", sakura: "assets/art/sky/bg_sakura.webp", eclipse: "assets/art/sky/bg_eclipse.webp", gekko: "assets/art/sky/bg_gekko.webp", hamabe: "assets/art/sky/bg_hamabe.webp" };
+  const SKYIMG = {}; for (const k in SKY) { const im = new Image(); im.src = SKY[k]; SKYIMG[k] = im; }
+  const titleFor = (n, st) => (st > 0 ? SONGS[st].title : TITLES.reduce((t, [k, s]) => (n >= k ? s : t), TITLES[0][1]));
   const hash = location.hash;
   const autotest = hash.startsWith("#autotest"), autocut = hash.startsWith("#autocut"), noFloat = hash.includes("nofloat");
   const AUTO = autotest || autocut;             // 自動プレイは稽古ではなく本番ルールで動く＝送らない
-  const AUTO_TARGET = Math.max(1, parseInt((hash.match(/#autotest=(\d+)/) || [])[1], 10) || MANGAN);  // #autotest=260 で延長まで通す
+  const AUTO_TARGET = Math.max(1, parseInt((hash.match(/#autotest=(\d+)/) || [])[1], 10) || 100);  // #autotest=260 で延長まで通す
   const $ = (id) => document.getElementById(id);
   const canvas = $("game"), ctx = canvas.getContext("2d"), mainEl = document.querySelector("main");
   const titleOverlay = $("title-overlay"), overlay = $("overlay");
@@ -35,38 +53,39 @@
     { id: "xiaolan", name: "シャオラン" }, { id: "yui", name: "結" },
   ];
   const FUDA = {
-    anne_03: "assets/art/fuda/anne_03.webp", anne_10: "assets/art/fuda/anne_10.webp",
-    atoza_03: "assets/art/fuda/atoza_03.webp", atoza_10: "assets/art/fuda/atoza_10.webp",
-    aun_03: "assets/art/fuda/aun_03.webp", aun_10: "assets/art/fuda/aun_10.webp",
-    benten_03: "assets/art/fuda/benten_03.webp", benten_10: "assets/art/fuda/benten_10.webp",
-    dan_03: "assets/art/fuda/dan_03.webp", dan_10: "assets/art/fuda/dan_10.webp",
-    emma_03: "assets/art/fuda/emma_03.webp", emma_10: "assets/art/fuda/emma_10.webp",
-    hinanojo_03: "assets/art/fuda/hinanojo_03.webp", hinanojo_10: "assets/art/fuda/hinanojo_10.webp",
-    izuna_03: "assets/art/fuda/izuna_03.webp", izuna_10: "assets/art/fuda/izuna_10.webp",
-    janome_03: "assets/art/fuda/janome_03.webp", janome_10: "assets/art/fuda/janome_10.webp",
-    karma_03: "assets/art/fuda/karma_03.webp", karma_10: "assets/art/fuda/karma_10.webp",
-    karura_03: "assets/art/fuda/karura_03.webp", karura_10: "assets/art/fuda/karura_10.webp",
-    kohaku_03: "assets/art/fuda/kohaku_03.webp", kohaku_10: "assets/art/fuda/kohaku_10.webp",
-    magoichi_03: "assets/art/fuda/magoichi_03.webp", magoichi_10: "assets/art/fuda/magoichi_10.webp",
-    naruka_03: "assets/art/fuda/naruka_03.webp", naruka_10: "assets/art/fuda/naruka_10.webp",
-    nekomata_03: "assets/art/fuda/nekomata_03.webp", nekomata_10: "assets/art/fuda/nekomata_10.webp",
-    nemu_03: "assets/art/fuda/nemu_03.webp", nemu_10: "assets/art/fuda/nemu_10.webp",
-    oen_03: "assets/art/fuda/oen_03.webp", oen_10: "assets/art/fuda/oen_10.webp",
-    orochi_03: "assets/art/fuda/orochi_03.webp", orochi_10: "assets/art/fuda/orochi_10.webp",
-    oto_03: "assets/art/fuda/oto_03.webp", oto_10: "assets/art/fuda/oto_10.webp",
-    rotton_03: "assets/art/fuda/rotton_03.webp", rotton_10: "assets/art/fuda/rotton_10.webp",
-    sakuya_03: "assets/art/fuda/sakuya_03.webp", sakuya_10: "assets/art/fuda/sakuya_10.webp",
-    shiba_03: "assets/art/fuda/shiba_03.webp", shiba_10: "assets/art/fuda/shiba_10.webp",
-    shinra_03: "assets/art/fuda/shinra_03.webp", shinra_10: "assets/art/fuda/shinra_10.webp",
-    shion_03: "assets/art/fuda/shion_03.webp", shion_10: "assets/art/fuda/shion_10.webp",
-    tart_03: "assets/art/fuda/tart_03.webp", tart_10: "assets/art/fuda/tart_10.webp",
-    torika_03: "assets/art/fuda/torika_03.webp", torika_10: "assets/art/fuda/torika_10.webp",
-    uka_03: "assets/art/fuda/uka_03.webp", uka_10: "assets/art/fuda/uka_10.webp",
-    xiaolan_03: "assets/art/fuda/xiaolan_03.webp", xiaolan_10: "assets/art/fuda/xiaolan_10.webp",
-    yui_03: "assets/art/fuda/yui_03.webp", yui_10: "assets/art/fuda/yui_10.webp",  };
+    anne_03: "assets/art/fuda/anne_03.webp", anne_06: "assets/art/fuda/anne_06.webp", anne_08: "assets/art/fuda/anne_08.webp", anne_09: "assets/art/fuda/anne_09.webp", anne_10: "assets/art/fuda/anne_10.webp",
+    atoza_03: "assets/art/fuda/atoza_03.webp", atoza_06: "assets/art/fuda/atoza_06.webp", atoza_08: "assets/art/fuda/atoza_08.webp", atoza_09: "assets/art/fuda/atoza_09.webp", atoza_10: "assets/art/fuda/atoza_10.webp",
+    aun_03: "assets/art/fuda/aun_03.webp", aun_06: "assets/art/fuda/aun_06.webp", aun_08: "assets/art/fuda/aun_08.webp", aun_09: "assets/art/fuda/aun_09.webp", aun_10: "assets/art/fuda/aun_10.webp",
+    benten_03: "assets/art/fuda/benten_03.webp", benten_06: "assets/art/fuda/benten_06.webp", benten_08: "assets/art/fuda/benten_08.webp", benten_09: "assets/art/fuda/benten_09.webp", benten_10: "assets/art/fuda/benten_10.webp",
+    dan_03: "assets/art/fuda/dan_03.webp", dan_06: "assets/art/fuda/dan_06.webp", dan_08: "assets/art/fuda/dan_08.webp", dan_09: "assets/art/fuda/dan_09.webp", dan_10: "assets/art/fuda/dan_10.webp",
+    emma_03: "assets/art/fuda/emma_03.webp", emma_06: "assets/art/fuda/emma_06.webp", emma_08: "assets/art/fuda/emma_08.webp", emma_09: "assets/art/fuda/emma_09.webp", emma_10: "assets/art/fuda/emma_10.webp",
+    hinanojo_03: "assets/art/fuda/hinanojo_03.webp", hinanojo_06: "assets/art/fuda/hinanojo_06.webp", hinanojo_08: "assets/art/fuda/hinanojo_08.webp", hinanojo_09: "assets/art/fuda/hinanojo_09.webp", hinanojo_10: "assets/art/fuda/hinanojo_10.webp",
+    izuna_03: "assets/art/fuda/izuna_03.webp", izuna_06: "assets/art/fuda/izuna_06.webp", izuna_08: "assets/art/fuda/izuna_08.webp", izuna_09: "assets/art/fuda/izuna_09.webp", izuna_10: "assets/art/fuda/izuna_10.webp",
+    janome_03: "assets/art/fuda/janome_03.webp", janome_06: "assets/art/fuda/janome_06.webp", janome_08: "assets/art/fuda/janome_08.webp", janome_09: "assets/art/fuda/janome_09.webp", janome_10: "assets/art/fuda/janome_10.webp",
+    karma_03: "assets/art/fuda/karma_03.webp", karma_06: "assets/art/fuda/karma_06.webp", karma_08: "assets/art/fuda/karma_08.webp", karma_09: "assets/art/fuda/karma_09.webp", karma_10: "assets/art/fuda/karma_10.webp",
+    karura_03: "assets/art/fuda/karura_03.webp", karura_06: "assets/art/fuda/karura_06.webp", karura_08: "assets/art/fuda/karura_08.webp", karura_09: "assets/art/fuda/karura_09.webp", karura_10: "assets/art/fuda/karura_10.webp",
+    kohaku_03: "assets/art/fuda/kohaku_03.webp", kohaku_06: "assets/art/fuda/kohaku_06.webp", kohaku_08: "assets/art/fuda/kohaku_08.webp", kohaku_09: "assets/art/fuda/kohaku_09.webp", kohaku_10: "assets/art/fuda/kohaku_10.webp",
+    magoichi_03: "assets/art/fuda/magoichi_03.webp", magoichi_06: "assets/art/fuda/magoichi_06.webp", magoichi_08: "assets/art/fuda/magoichi_08.webp", magoichi_09: "assets/art/fuda/magoichi_09.webp", magoichi_10: "assets/art/fuda/magoichi_10.webp",
+    naruka_03: "assets/art/fuda/naruka_03.webp", naruka_06: "assets/art/fuda/naruka_06.webp", naruka_08: "assets/art/fuda/naruka_08.webp", naruka_09: "assets/art/fuda/naruka_09.webp", naruka_10: "assets/art/fuda/naruka_10.webp",
+    nekomata_03: "assets/art/fuda/nekomata_03.webp", nekomata_06: "assets/art/fuda/nekomata_06.webp", nekomata_08: "assets/art/fuda/nekomata_08.webp", nekomata_09: "assets/art/fuda/nekomata_09.webp", nekomata_10: "assets/art/fuda/nekomata_10.webp",
+    nemu_03: "assets/art/fuda/nemu_03.webp", nemu_06: "assets/art/fuda/nemu_06.webp", nemu_08: "assets/art/fuda/nemu_08.webp", nemu_09: "assets/art/fuda/nemu_09.webp", nemu_10: "assets/art/fuda/nemu_10.webp",
+    oen_03: "assets/art/fuda/oen_03.webp", oen_06: "assets/art/fuda/oen_06.webp", oen_08: "assets/art/fuda/oen_08.webp", oen_09: "assets/art/fuda/oen_09.webp", oen_10: "assets/art/fuda/oen_10.webp",
+    orochi_03: "assets/art/fuda/orochi_03.webp", orochi_06: "assets/art/fuda/orochi_06.webp", orochi_08: "assets/art/fuda/orochi_08.webp", orochi_09: "assets/art/fuda/orochi_09.webp", orochi_10: "assets/art/fuda/orochi_10.webp",
+    oto_03: "assets/art/fuda/oto_03.webp", oto_06: "assets/art/fuda/oto_06.webp", oto_08: "assets/art/fuda/oto_08.webp", oto_09: "assets/art/fuda/oto_09.webp", oto_10: "assets/art/fuda/oto_10.webp",
+    rotton_03: "assets/art/fuda/rotton_03.webp", rotton_06: "assets/art/fuda/rotton_06.webp", rotton_08: "assets/art/fuda/rotton_08.webp", rotton_09: "assets/art/fuda/rotton_09.webp", rotton_10: "assets/art/fuda/rotton_10.webp",
+    sakuya_03: "assets/art/fuda/sakuya_03.webp", sakuya_06: "assets/art/fuda/sakuya_06.webp", sakuya_08: "assets/art/fuda/sakuya_08.webp", sakuya_09: "assets/art/fuda/sakuya_09.webp", sakuya_10: "assets/art/fuda/sakuya_10.webp",
+    shiba_03: "assets/art/fuda/shiba_03.webp", shiba_06: "assets/art/fuda/shiba_06.webp", shiba_08: "assets/art/fuda/shiba_08.webp", shiba_09: "assets/art/fuda/shiba_09.webp", shiba_10: "assets/art/fuda/shiba_10.webp",
+    shinra_03: "assets/art/fuda/shinra_03.webp", shinra_06: "assets/art/fuda/shinra_06.webp", shinra_08: "assets/art/fuda/shinra_08.webp", shinra_09: "assets/art/fuda/shinra_09.webp", shinra_10: "assets/art/fuda/shinra_10.webp",
+    shion_03: "assets/art/fuda/shion_03.webp", shion_06: "assets/art/fuda/shion_06.webp", shion_08: "assets/art/fuda/shion_08.webp", shion_09: "assets/art/fuda/shion_09.webp", shion_10: "assets/art/fuda/shion_10.webp",
+    tart_03: "assets/art/fuda/tart_03.webp", tart_06: "assets/art/fuda/tart_06.webp", tart_08: "assets/art/fuda/tart_08.webp", tart_09: "assets/art/fuda/tart_09.webp", tart_10: "assets/art/fuda/tart_10.webp",
+    torika_03: "assets/art/fuda/torika_03.webp", torika_06: "assets/art/fuda/torika_06.webp", torika_08: "assets/art/fuda/torika_08.webp", torika_09: "assets/art/fuda/torika_09.webp", torika_10: "assets/art/fuda/torika_10.webp",
+    uka_03: "assets/art/fuda/uka_03.webp", uka_06: "assets/art/fuda/uka_06.webp", uka_08: "assets/art/fuda/uka_08.webp", uka_09: "assets/art/fuda/uka_09.webp", uka_10: "assets/art/fuda/uka_10.webp",
+    xiaolan_03: "assets/art/fuda/xiaolan_03.webp", xiaolan_06: "assets/art/fuda/xiaolan_06.webp", xiaolan_08: "assets/art/fuda/xiaolan_08.webp", xiaolan_09: "assets/art/fuda/xiaolan_09.webp", xiaolan_10: "assets/art/fuda/xiaolan_10.webp",
+    yui_03: "assets/art/fuda/yui_03.webp", yui_06: "assets/art/fuda/yui_06.webp", yui_08: "assets/art/fuda/yui_08.webp", yui_09: "assets/art/fuda/yui_09.webp", yui_10: "assets/art/fuda/yui_10.webp",
+  };
   const IMG = {};
   function fudaImg(id, st) { const k = id + "_" + st; let im = IMG[k]; if (!im) { im = IMG[k] = new Image(); im.src = FUDA[k]; } return im; }
-  for (const s of SPIRITS) { fudaImg(s.id, "03"); fudaImg(s.id, "10"); }   // 先に取りにいく（描画は待たない）
+  for (const s of SPIRITS) for (const st of RANKS) fudaImg(s.id, st);   // 先に取りにいく（描画は待たない）
 
   /* ---- iOS: ダブルタップズームは 350ms 以内の2回目を止める（釦は除く）。gesturestart は等倍のときだけ止める ---- */
   let lastTouch = 0;
@@ -78,8 +97,8 @@
   new ResizeObserver(fitCanvas).observe(mainEl); fitCanvas();
 
   /* ---- 記録（わいわいSDK 主経路・localStorage は控え） ---- */
-  // clears＝満願の回数 / spirits＝柱ごとの浄めた数（29柱の図鑑の元。SPEC §7）
-  const saveData = { best: 0, title: "", titleRank: -1, sound: "on", clears: 0, spirits: {} };
+  // spirits＝柱ごとの浄めた数（29柱の図鑑の元。SPEC §7）
+  const saveData = { best: 0, title: "", titleRank: -1, sound: "on", spirits: {}, songMax: 0 };   // songMax＝届いた曲（SONGS の添字・記録の第2軸）
   const TIMED_OUT = {}; let saveUseSdk = false, saveDirty = false;
   function waiwaiTry(fn, label, ms = 2500) {
     let call; try { call = fn(); } catch (e) { console.warn("[waiwai] " + label + " を呼べなかった", e); return Promise.resolve({ ok: false }); }
@@ -92,7 +111,7 @@
     const fl = (v) => (typeof v === "number" && isFinite(v) && v >= 0 && v <= MAX_KEEP ? Math.floor(v) : null);
     const b = fl(o.best); if (b !== null) { read++; saveData.best = Math.max(saveData.best, b); }
     const r = fl(o.titleRank); if (r !== null && typeof o.title === "string" && o.title) { read++; if (r > saveData.titleRank) { saveData.titleRank = r; saveData.title = o.title.slice(0, 40); } }
-    const c = fl(o.clears); if (c !== null) { read++; saveData.clears = Math.max(saveData.clears, c); }
+    const sm = fl(o.songMax); if (sm !== null) { read++; saveData.songMax = Math.min(SONGS.length - 1, Math.max(saveData.songMax, sm)); }
     // spirits は「知っている29柱の欄」だけを読む（見知らぬ鍵は捨てる＝壊れた束で図鑑を膨らませない）。値は best と同じ物差しで捨てる
     if (o.spirits && typeof o.spirits === "object" && !Array.isArray(o.spirits)) {
       let got = 0;
@@ -120,10 +139,14 @@
   let lastDark = [-1, -1], lastAdj = false;
   const rings = [], floats = [];
   const runTally = new Map();       // この夜に柱ごとへ何枚浄めたか。夜の終わりに束へ足す（稽古は足さない）
-  let runStart = 0, manganAt = 0;
+  let runStart = 0, switchAt = 0;   // switchAt＝2曲目に入った時刻（検査の物差し・受け入れ基準2）
+  let stage = 0, songStep = 0, stagePlayed = 0;   // 曲（SONGS の添字）・曲の中の位置・この曲に入ってから鳴らした音数。新しく降りる札から次の段になる
+  const colorRank = () => SONGS[stage].rank;
+  const petals = [];                // 夜桜（さくらさくら以降）
+  let prevBg = null;                // 前の曲の背景。次の曲の一巡目で p に従って入れ替わる
   // 検証用の覗き口（読むだけ）。ids は「同じ柱が盤に二度出ていないか」を数える。
   // lane は最下段の未浄の筋＝機械に手で遊ばせて実写真を撮るため（自動プレイは番付の行が出ないので画が撮れない）
-  window.__stats = () => ({ purified, pillars: litSet ? litSet.size : 0, manganAt, over, lane: (lowestUncleared() || {}).darkLane, ids: rows.flatMap((r) => [r.darkId, r.colorId]) });
+  window.__stats = () => ({ purified, pillars: litSet ? litSet.size : 0, switchAt, over, stage, rank: colorRank(), song: SONGS[stage].name, songStep, lane: (lowestUncleared() || {}).darkLane, ids: rows.flatMap((r) => [r.darkId, r.colorId]) });
 
   const shuffled = () => { const a = SPIRITS.map((s) => s.id); for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; const t = a[i]; a[i] = a[j]; a[j] = t; } return a; };
   const liveIds = () => { const v = new Set(); for (const r of rows) { v.add(r.darkId); v.add(r.colorId); } return v; };
@@ -160,40 +183,50 @@
   function spawnRow() {
     const y = rows.length ? rows[rows.length - 1].y - ROW_H : 0;
     const { d, c } = pickLanes(); const dark = pickDark();
-    rows.push({ y, darkLane: d, colorLane: c, darkId: dark, colorId: pickColor(dark), cleared: false });
+    rows.push({ y, darkLane: d, colorLane: c, darkId: dark, colorId: pickColor(dark), cleared: false, rank: colorRank() });   // 段は生まれた時のもの＝節目でも盤の上の札は動かない（一斉染めは「ミスしそうになった」で撤去・2026-09-02）
   }
-  const lowestUncleared = () => { for (const r of rows) if (!r.cleared) return r; return null; };
-  const speed = () => (practice ? V0 : purified < ASSIST_ROWS ? V0 * ASSIST : Math.min(V0 * Math.pow(ACC, purified), VMAX));   // 稽古は V0 に固定（SPEC §6）
+  const lowestUncleared = () => { for (const r of rows) if (!r.cleared && !r.missed) return r; return null; };   // 稽古で取りこぼした行（missed）は飛ばす
+  const curve = (n) => (n < N1 ? Math.max(VFLOOR, Math.min(V0 * Math.pow(ACC, n), VMAX)) : Math.min(VMAX * Math.pow(ACC2, n - N1), VMAX2));   // 床→曲線→第一の上限→緩い傾き→第二の上限（SPEC §3）
+  const speed = () => (purified < ASSIST_ROWS ? VFLOOR * ASSIST : curve(purified));   // 稽古も本番と同じ速さ（通しで確かめるため・SPEC §6 改訂 2026-09-02）
   const updateHud = () => { $("score").textContent = purified; $("best").textContent = Math.max(saveData.best, practice ? 0 : purified); $("pillars").textContent = (litSet ? litSet.size : 0) + "/29"; };
 
   /* ---- 開幕の時間割: 絵だけ1.2秒 → カード0.7秒（ready のあとで押せる）。起点はページを開いた時刻。保険5秒 ---- */
-  titleOverlay.classList.add("art-in");
+  const TITLE_ART = "assets/art/title.webp";   // 案内の絵（Lovart 生成・道は文字列で置く）
+  $("title-bg").style.backgroundImage = "url(" + TITLE_ART + ")"; titleOverlay.classList.add("art-in");
   const t0 = performance.now(); let readyShown = false;
-  const showCard = () => { if (readyShown) return; readyShown = true; titleOverlay.classList.add("ready"); if (saveData.title) { $("best-title").hidden = false; $("best-title").textContent = "これまでの誉れ：" + saveData.title; } updateHud(); };
+  const showCard = () => { if (readyShown) return; readyShown = true; titleOverlay.classList.add("ready"); if (saveData.title && !practice) { $("best-title").hidden = false; $("best-title").textContent = "これまでの誉れ：" + saveData.title + (saveData.songMax > 0 ? "　／　" + SONGS[saveData.songMax].name + "まで" : ""); } updateHud(); };
   loadSave().then(() => setTimeout(showCard, Math.max(0, 1200 - (performance.now() - t0)))); setTimeout(showCard, 5000);
-  if (AUTO) loadSave().then(() => setTimeout(() => begin(false), 1400));
+  if (AUTO) loadSave().then(() => setTimeout(() => begin(false, true), 1400));
 
   /* ---- 稽古（題字を1.5秒以内に3回・pointerdown で数える） ---- */
   let taps = [];
-  document.querySelector(".game-title").addEventListener("pointerdown", () => { const t = Date.now(); taps = taps.filter((x) => t - x < 1500); taps.push(t); if (taps.length >= 3 && !practice) { practice = true; const b = $("best-title"); b.hidden = false; b.textContent = "／ 稽古（記録は残らない）"; } });
+  document.querySelector(".game-title").addEventListener("pointerdown", () => { const t = Date.now(); taps = taps.filter((x) => t - x < 1500); taps.push(t); if (taps.length >= 3) enterPractice(); });
 
   function resetRun() {
     over = false; purified = 0; rows = []; darkPool = shuffled(); litIds = []; litSet = new Set();
-    lastDark = [-1, -1]; lastAdj = false; rings.length = 0; floats.length = 0; manganAt = 0; runTally.clear(); kotoStep = 0;
+    lastDark = [-1, -1]; lastAdj = false; rings.length = 0; floats.length = 0; switchAt = 0; runTally.clear(); songStep = 0; stagePlayed = 0; stage = 0; petals.length = 0; prevBg = null;
     for (let i = 0; i < 3; i++) spawnRow();          // 上から3行ぶんが降りてくるところから始まる
     nightId++; pausedUntil = performance.now() + 700; runStart = performance.now(); updateHud();
   }
-  function begin(withSound) {
+  const doorEl = $("door");
+  function begin(withSound, skipDoor) {
     soundOn = withSound; saveData.sound = withSound ? "on" : "off"; saveDirty = true; persistSave(); applySound();
     titleOverlay.classList.add("hidden"); started = true; resetRun();
+    if (skipDoor) return;   // 検証（自動プレイ）は帳を飛ばす
+    // 帳（とばり）: 閉じた扉を見せて左右へ開く（月影とび・式札かさねの型）。帳は0.5秒後に開き始め1.5秒で開ききる＝2.0秒。
+    // 叩けるのは弁天のひと言（0.25秒後・3.11秒）を言い終えてから＝3.45秒（2026-09-03 オーナー選定「ぬしさん、唄に付き合いなんし」）
+    doorEl.classList.remove("open"); doorEl.classList.add("show"); pausedUntil = performance.now() + 3450;
+    setTimeout(() => playSe("koe_start"), 250);   // 帳が開く間に弁天のひと言（SPEC §5）
+    setTimeout(() => doorEl.classList.add("open"), 500); setTimeout(() => doorEl.classList.remove("show"), 2200);
   }
   $("start").addEventListener("click", () => begin(true)); $("start-silent").addEventListener("click", () => begin(false));
+  const enterPractice = () => { if (practice) return; practice = true; const b = $("best-title"); b.hidden = false; b.textContent = "／ 稽古（外しても終わらない・記録は残らない）"; };   // 入口は題字3タップの隠し操作だけ（見える釦は 2026-09-03 に撤去・オーナー裁定）
 
   /* ---- 叩く。見るのは「どの筋か」だけ（指の高さは判定に使わない・SPEC §2） ---- */
   function strike(lane) {
     if (!started || over || performance.now() < pausedUntil) return;
     const r = lowestUncleared(); if (!r) return;
-    if (lane !== r.darkLane) { over = true; showGameOver(false); return; }   // 色の札でも空の筋でも、外したら夜明け
+    if (lane !== r.darkLane) { if (practice) { playSe("whiff"); addFloat("外"); return; } over = true; showGameOver(false); return; }   // 色の札でも空の筋でも、外したら夜明け。稽古は音と印だけで続く
     purify(r);
   }
   function purify(r) {
@@ -202,8 +235,8 @@
     if (!litSet.has(r.darkId)) { litSet.add(r.darkId); litIds.push(r.darkId); }   // 浄めた柱は以後 色の札の側へ回る
     runTally.set(r.darkId, (runTally.get(r.darkId) || 0) + 1);
     rings.push({ cx: r.darkLane * LANE_W + LANE_W / 2, cy: r.y + ROW_H / 2, t: 0 });
-    if (purified === MANGAN) { manganAt = performance.now() - runStart; addFloat("満　願"); playSe("end"); }
-    else if (litSet.size === SPIRITS.length && purified < MANGAN) addFloat("満　天");
+    // 曲が一巡し終えたら、枚数が次の曲の最低枚数に届いていれば次の曲へ（鐘＋曲名の浮き文字）。曲の途中では替えない・盤の上の札は触らない（SPEC §4）
+    if (songStep >= SONGS[stage].notes.length) { songStep = 0; if (stage + 1 < SONGS.length && purified >= SONGS[stage + 1].min) { prevBg = SONGS[stage].bg; stage++; stagePlayed = 0; if (stage === 1) switchAt = performance.now() - runStart; addFloat(SONGS[stage].name.split("").join("　")); playSe("end"); const v = SONGS[stage].voice; if (v) setTimeout(() => playSe(v), 700); } }   // 鐘のあとに弁天のひと言（曲の節目・SPEC §5）
     updateHud();
   }
   canvas.addEventListener("pointerdown", (e) => {
@@ -216,19 +249,21 @@
   const canSubmitScore = () => !practice && !AUTO && (purified > 0 || saveData.best > 0);   // 記録が無い人の0だけ送らない（宵あらわし式）
   function showGameOver(cleared) {
     playSe("whiff");   // 夜明け（色の札を叩いた／取りこぼした・SPEC §5）
+    if (!practice) setTimeout(() => playSe("koe_dawn"), 260);   // 夜明けの声（結果札の前・稽古では鳴らさない）
     $("final-rank").hidden = true; $("final-rank-mark").hidden = true; $("final-rank-line").hidden = true; $("final-rank-line").textContent = "";
-    const won = !!cleared || purified >= MANGAN;
     const prevBest = saveData.best;   // 束を書き換える前に控える（自己最高の更新は SDK が無い夜でも出す）
-    // 束へ足すのは夜の終わりに1回だけ（稽古は残さない・SPEC §6）。満願は回数、柱は枚数で積む
+    // 束へ足すのは夜の終わりに1回だけ（稽古は残さない・SPEC §6）。柱は枚数で積む
     if (!practice) {
-      if (purified > saveData.titleRank) { saveData.titleRank = purified; saveData.title = titleFor(purified); }
+      if (purified > saveData.titleRank) { saveData.titleRank = purified; saveData.title = titleFor(purified, stage); }
       saveData.best = Math.max(saveData.best, purified);
-      if (won) saveData.clears = Math.min(MAX_KEEP, saveData.clears + 1);
+      saveData.songMax = Math.max(saveData.songMax, stage);
       for (const [id, n] of runTally) saveData.spirits[id] = Math.min(MAX_KEEP, (saveData.spirits[id] || 0) + n);
       saveDirty = true; persistSave();
     }
-    $("result-card").classList.toggle("clear", won); $("final-heading").textContent = won ? "明けの祓い" : "夜が明けた"; $("final-sub").textContent = won ? "百八の闇は、みな色を取り戻した" : "囃子は、ここで途切れた";
-    $("final-title").textContent = titleFor(purified); $("final-score").innerHTML = purified + "<small>枚</small>";
+    $("final-heading").textContent = "夜が明けた"; $("final-sub").textContent = stage > 0 ? SONGS[stage].name + "まで奏でた" : "囃子は、ここで途切れた";
+    { let bestId = null, bestN = 0; for (const [id, n] of runTally) if (n >= bestN) { bestN = n; bestId = id; }   // この夜いちばん浄めた柱（同数なら後の柱）
+      const fu = $("final-fuda"); if (bestId) { fu.src = FUDA[bestId + "_" + colorRank()]; fu.alt = (SPIRITS.find((s) => s.id === bestId) || {}).name || ""; fu.style.display = "block"; } else fu.style.display = "none"; }
+    $("final-title").textContent = titleFor(purified, stage); $("final-score").innerHTML = purified + "<small>枚</small>";
     // 最高（自己）。稽古の夜は束を触っていないので、これまでの最高をそのまま出す
     const renewed = !practice && purified > prevBest;
     $("final-best").textContent = "最高 " + saveData.best + "枚" + (renewed ? "　更新" : "") + (practice ? "（稽古）" : "");
@@ -240,7 +275,7 @@
   window.__forceOver = () => { if (started && !over) { over = true; showGameOver(false); } };   // 検証用
   async function reportScore(score, myNight) {
     if (!window.waiwai) { console.warn("[waiwai] SDK が読めていないので全国順位は出さない"); return; }
-    const res = await waiwaiTry(() => window.waiwai.submitScore(RANK_BOARD, score, { title: titleFor(purified) }), "submitScore"); if (!res.ok || nightId !== myNight) return;
+    const res = await waiwaiTry(() => window.waiwai.submitScore(RANK_BOARD, score, { title: titleFor(purified, stage) }), "submitScore"); if (!res.ok || nightId !== myNight) return;
     const v = res.value || {}; if (v.local) return;   // 枠の外は順位を出さない
     const rank = Number.isInteger(v.rank) ? v.rank : null; if (rank === null) return;
     const top = await waiwaiTry(() => window.waiwai.getTopScores(RANK_BOARD, 10), "getTopScores"); if (nightId !== myNight) return;
@@ -290,12 +325,9 @@
   $("retry").addEventListener("click", restart);
 
   /* ---- 音（琴・Karplus-Strong 弦合成。SPEC §5）----
-     浄めるたびに次の音を鳴らす。音階は都節音階（陰旋法）＝宵闇の側。ヨナ抜き長音階は明るすぎるので使わない。
-     上行して一巡（5音）したら次の高さへ——scaleFreq(step) は step が5増えるごとに1オクターブ上がるので、
-     kotoStep をただ足すだけで実現できる。ただし932Hz（step 11）を超えたら1オクターブ折り返す
-     （弦モデルは高音ほど N=sr/freq が細り、楽器らしさが崩れる）。合成は御霊おとしの弦の物理モデルを流用、
-     宵あらわし §19.2 がサンプルをやめて同じ手（純合成・音源ファイル無し）にしたのに倣う。
-     BGM・声・満願と夜明けの音・SE9本はこの便では扱わない（SPEC §5・次便へ）。 */
+     浄めるたびに、いまの曲（SONGS）の次の音を鳴らす。1タップ＝1音で、拍は遊ぶ側の速さ。曲は版権切れの4曲（§4）。
+     合成は御霊おとしの弦の物理モデルを流用、宵あらわし §19.2 と同じ純合成（音源ファイル無し）。
+     音域 D4〜F5（293〜698Hz）＝モバイルの床200Hzを割らず、弦モデルが崩れる高音にも届かない。 */
   const SFX_BUS = 0.9;      // 効果音バスの素の大きさ（式札かさね・宵あらわしと同値）
   let audioCtx = null, sfxBus = null;
   function getAudioCtx() {
@@ -351,40 +383,30 @@
     } catch (e) {}
   }
   const KOTO_WOB_VOL = 0.08, KOTO_WOB_HZ = 0.004;   // 連射の機械感を消す揺らぎ（音量±8%・ピッチ±0.4%）
-  const SCALE = [0, 1, 5, 7, 8];                    // 陰旋法（都節音階）
-  function scaleFreq(step) {
-    const oct = Math.floor(step / SCALE.length);
-    const semi = SCALE[step % SCALE.length] + oct * 12;
-    return 220 * Math.pow(2, semi / 12);   // 220Hz（A3）起点＝常に200Hz超（モバイルの床。MEDIA.md）
-  }
-  function noteFreq(step) {
-    while (step > 11) step -= SCALE.length;   // 932Hz（step 11）を上限に1オクターブ（5音）ずつ折り返す
-    return scaleFreq(step);
-  }
-  let kotoStep = 0;   // 浄めた回数そのもの。夜ごとに resetRun() でリセット
-  function kotoPluck() {
-    const freq = noteFreq(kotoStep) * (1 + (Math.random() * 2 - 1) * KOTO_WOB_HZ);
+  const midiFreq = (m) => 440 * Math.pow(2, (m - 69) / 12);
+  function kotoPluck() {   // いまの曲の次の音（1タップ＝1音・拍は遊ぶ側の速さ）
+    const song = SONGS[stage]; const m = song.notes[songStep % song.notes.length];
+    const freq = midiFreq(m) * (1 + (Math.random() * 2 - 1) * KOTO_WOB_HZ);
     const vol = 0.7 * (1 + (Math.random() * 2 - 1) * KOTO_WOB_VOL);
-    pluckOut(freq, vol);
-    kotoStep++;
+    pluckOut(freq, vol); songStep++; stagePlayed++;
   }
-  window.__koto = { scaleFreq, noteFreq, kotoWave, SCALE, KOTO_RING_S, get kotoStep() { return kotoStep; }, get ctxState() { return audioCtx ? audioCtx.state : null; } };   // 検証用
+  window.__koto = { midiFreq, kotoWave, SONGS, KOTO_RING_S, get songStep() { return songStep; }, get stage() { return stage; }, get ctxState() { return audioCtx ? audioCtx.state : null; } };   // 検証用
 
-  /* ---- 夜明け・満願の音（公式ミニゲームSE。琴と地続きの低音寄りの2本を選定・SPEC §5）----
+  /* ---- 夜明け・曲の節目の音（公式ミニゲームSE。琴と地続きの低音寄りの2本を選定・SPEC §5）----
      どちらも200Hz未満に音圧の大半が集まる低音寄りの音（end: <400Hzが全体とほぼ同値、whiff: 同様）＝
      Karplus-Strong弦の琴と質感が割れない。whiff は既存作でも一貫して「外した／誤タップ」の役なので、
      色の札を叩く／取りこぼす＝夜明けの意味に素直。end は在庫中もっとも長く（1.76秒）低く、
-     満願（108枚）の締めに使う。
-     音量は「浄めの音（琴）が主役・夜明けと満願がその次」（依頼指定）。実測（Chromeのデコード後、
+     曲の節目（次の曲へ替わる瞬間）の鐘に使う。
+     音量は「浄めの音（琴）が主役・夜明けと節目がその次」（依頼指定）。実測（Chromeのデコード後、
      0.1秒窓RMSの最大値＝鳴った瞬間。sfxBus 0.9 込み）:
-       琴（一夜の平均）  -18.1dB（開始12音）／ -19.1dB（以後108枚のほとんどを占める反復5音）
-       whiff（夜明け）  SE_VOL=0.7 で -21.5dB／end（満願）  SE_VOL=0.4 で -20.2dB
+       琴（一夜の平均）  -18.1dB（開始12音）／ -19.1dB（旧実装の反復5音）
+       whiff（夜明け）  SE_VOL=0.7 で -21.5dB／end（節目）  SE_VOL=0.4 で -20.2dB
      どちらも琴の平均より2.6〜3.6dB下＝主役を食わない。ファイルは持たず assets/audio/ の2本
      （whiff・end）のみ同梱。fetch は index.html（Pages）用の経路で、
      dist/artifact.html は build-dist.js が window.AUDIO_DATA に base64 を注ぐ
      （Artifact の CSP は fetch("data:") を通さない――他作の教訓。atob() 経由で読む）。 */
-  const SE_NAMES = ["whiff", "end"];   // build-dist.js もこの名前をそのまま読む（二重管理しない）
-  const SE_VOL = { whiff: 0.7, end: 0.4 };
+  const SE_NAMES = ["whiff", "end", "koe_start", "koe_dawn", "koe_s1", "koe_s2", "koe_s3", "koe_s4", "koe_s5"];   // build-dist.js もこの名前をそのまま読む（二重管理しない）。koe_* は弁天の声（開幕・夜明け・曲の節目5）
+  const SE_VOL = { whiff: 0.7, end: 0.4, koe_start: 0.62, koe_dawn: 1.0, koe_s1: 0.66, koe_s2: 0.82, koe_s3: 0.69, koe_s4: 0.88, koe_s5: 0.92 };   // 声は一番前（MEDIA.md「声 > 効果音 > BGM」）。開幕と曲の節目5本は素で -9.0〜-12.5dB とばらつくため、夜明け（-13.2dB）に揃うよう個別に倍率をかけた。**開幕は 0.36 だと -17.9dB に沈んでいたので 0.62 へ訂正**（2026-09-04・実測は docs/VOICE.md）
   const seBuf = {}, sePromise = {};
   function b64ToBuf(b64) {
     const bin = atob(b64), u8 = new Uint8Array(bin.length);
@@ -431,7 +453,7 @@
       const v = speed();
       for (const r of rows) r.y += v * dt;
       const low = lowestUncleared();
-      if (low && low.y > MISS_Y) { over = true; showGameOver(false); }   // 取りこぼし
+      if (low && low.y > MISS_Y) { if (practice) { low.missed = true; addFloat("落"); } else { over = true; showGameOver(false); } }   // 取りこぼし（稽古は印だけで続く）
       else {
         while (rows.length && rows[0].y >= H) rows.shift();
         while (!rows.length || rows[rows.length - 1].y > -ROW_H) spawnRow();
@@ -456,13 +478,52 @@
       ctx.strokeStyle = "#131320"; ctx.lineWidth = 2; ctx.strokeRect(x + 7, y + 7, LANE_W - 14, ROW_H - 14);
     }
   }
+  /* ---- 空（曲ごとの演出・SPEC §4「曲が替わる夜」）。Lovart の絵を層にする: 背景（曲ごと・一巡目で前の曲から溶け替わる）→ 月（一枚絵・黒を透明に＝lighter）→ 靄・花弁 → 額装（lighter）。
+     canvas は配置・不透明度・ゆっくりした動きだけ。図形で描かない（札絵の隣で見劣りする・2026-09-02 オーナー指摘） ---- */
+  const MOON = { x: W / 2, y: 250, r: 128 };
+  const progress = () => Math.min(1, stagePlayed / SONGS[stage].notes.length);   // その曲の一巡目でどこまで来たか（0〜1）
+  const ok = (im) => im && im.complete && im.naturalWidth > 0;
+  const skyCache = document.createElement("canvas"); skyCache.width = W; skyCache.height = H; const sctx = skyCache.getContext("2d"); let skyKey = "";
+  function drawCoverTo(c, im, alpha, blend) {
+    if (!ok(im) || alpha <= 0) return;
+    const sc = Math.max(W / im.naturalWidth, H / im.naturalHeight), w = im.naturalWidth * sc, h = im.naturalHeight * sc;
+    c.globalAlpha = alpha; if (blend) c.globalCompositeOperation = blend; c.drawImage(im, (W - w) / 2, 0, w, h); c.globalAlpha = 1; c.globalCompositeOperation = "source-over";
+  }
+  function bakeSky(song, sky, p) {   // 静止部分（背景の溶け替わり・月・額装）は1タップごとにしか変わらない。裏の canvas に焼き、毎フレームは1枚描くだけ（スマホの負荷）
+    const loaded = ok(SKYIMG[song.bg]) + ok(SKYIMG.moon) + ok(SKYIMG.frame) + (prevBg ? ok(SKYIMG[prevBg]) : 0);
+    const key = stage + ":" + p.toFixed(3) + ":" + loaded; if (key === skyKey) return; skyKey = key;
+    sctx.fillStyle = "#131320"; sctx.fillRect(0, 0, W, H);
+    if (prevBg && p < 1) drawCoverTo(sctx, SKYIMG[prevBg], 0.9 * (1 - p)); drawCoverTo(sctx, SKYIMG[song.bg], 0.9 * (prevBg && p < 1 ? p : 1));
+    // 月: 荒城の月＝透明から浮かび上がる／朧＝薄く／山の魔王＝金の月が消えて背景の血月が残る／月光＝還る／浜辺＝明けとともに薄れる
+    const moonA = sky === "waxing" ? p : sky === "haze" ? 0.65 : sky === "eclipse" ? 1 - p : sky === "return" ? p : sky === "dawn" ? 1 - p * 0.7 : 1;
+    if (ok(SKYIMG.moon) && moonA > 0) { sctx.globalCompositeOperation = "lighter"; sctx.globalAlpha = moonA; sctx.drawImage(SKYIMG.moon, MOON.x - MOON.r, MOON.y - MOON.r, MOON.r * 2, MOON.r * 2); sctx.globalAlpha = 1; sctx.globalCompositeOperation = "source-over"; }
+    drawCoverTo(sctx, SKYIMG.frame, 0.9, "lighter");   // 額装（黒を透明に）
+  }
+  function drawSky(dt) {
+    const song = SONGS[stage], sky = song.sky, p = progress(), t = performance.now() / 1000;
+    bakeSky(song, sky, p); ctx.drawImage(skyCache, 0, 0);
+    if (sky === "haze") {   // 朧月夜: 靄の帯がゆっくり流れる（design-tokens の補助色を薄く）
+      for (let i = 0; i < 3; i++) {
+        const y = 150 + i * 110 + Math.sin(t * 0.15 + i) * 12, x = ((t * (6 + i * 3) + i * 160) % (W + 400)) - 200;
+        const g = ctx.createLinearGradient(x, 0, x + 400, 0); const a = 0.16 * Math.min(1, p * 2 + 0.3);
+        g.addColorStop(0, "rgba(157,147,181,0)"); g.addColorStop(0.5, `rgba(157,147,181,${a})`); g.addColorStop(1, "rgba(157,147,181,0)");
+        ctx.fillStyle = g; ctx.fillRect(x, y - 34, 400, 68);
+      }
+    }
+    if (stage >= 2) {   // さくらさくら以降: 夜桜がちらりと舞う（10片・design-tokens の暗紫）
+      while (petals.length < 10) petals.push({ x: Math.random() * W, y: -10 - Math.random() * H, vy: 22 + Math.random() * 18, sway: Math.random() * Math.PI * 2, r: 4 + Math.random() * 3 });
+      ctx.fillStyle = "rgba(142,107,158,.7)";
+      for (const q of petals) { q.y += q.vy * dt; q.sway += dt * 1.6; q.x += Math.sin(q.sway) * 18 * dt; if (q.y > H + 10) { q.y = -10; q.x = Math.random() * W; }
+        ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(q.sway); ctx.beginPath(); ctx.ellipse(0, 0, q.r, q.r * 0.55, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+    }
+  }
   function draw(dt) {
     ctx.fillStyle = "#131320"; ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = "#1B1B2E"; for (let i = 1; i < LANES; i++) ctx.fillRect(i * LANE_W - 0.5, 0, 1, H);   // 筋の境
+    drawSky(dt);   // 筋の境の線は引かない（満月を縦に横切って見えた・2026-09-02 オーナー指摘。筋は札の列と額装で分かる）
     for (const r of rows) {
       if (r.y > H || r.y < -ROW_H) continue;
-      drawCard(r.colorLane, r.y, r.colorId, "10", false);
-      drawCard(r.darkLane, r.y, r.darkId, r.cleared ? "10" : "03", !r.cleared);
+      drawCard(r.colorLane, r.y, r.colorId, r.rank, false);
+      drawCard(r.darkLane, r.y, r.darkId, r.cleared ? r.rank : "03", !r.cleared);
     }
     // 金の輪（札の外へ広がって消える。札の子要素に置かない＝切り抜きに切られない）
     for (let i = rings.length - 1; i >= 0; i--) {

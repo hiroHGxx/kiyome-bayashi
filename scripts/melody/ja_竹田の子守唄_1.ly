@@ -1,0 +1,1 @@
+ \relative f' { \key f \minor \time 2/4 | es4 f8 as8 | bes4 es | c2 | bes4 as | f bes | as as8( f) | f2( | f) }\addlyrics { ゆ き も | ち ら | つ | く し | こ も | な く- | し-}

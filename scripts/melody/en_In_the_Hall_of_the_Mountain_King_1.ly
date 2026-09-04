@@ -1,0 +1,2 @@
+\relative c{\set Score.tempoHideNote = ##t \tempo 4 = 138
+\clef "bass" \key b \minor fis8-. \p gis-. ais-. b-. cis-.-> ais-. cis4-. | d8-.-> ais-. d4-. cis8-.-> ais-. cis4-. | fis,8-. gis-. ais-. b-. cis-.-> ais-. cis4-. | d8-.-> ais-. d4-. cis4-.-> r4}

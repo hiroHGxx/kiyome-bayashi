@@ -1,0 +1,1 @@
+ \relative f' { \key g \major \time 2/4 | d e8. g16 | a4 a8. g16 | g8. e16 e4( | e4) g8. a16 | b4 b( | b) a8. g16 | a4 a | r2 | g4 g8. e16 | a4 a8. g16 | g8. e16 e4( | 4) g8. e16 | d4 d8. b16 | b4 r | d d8. b16 | e4 e| d d8. b16 | e4 e }\addlyrics { こ の こ | よ う ー | な ー く | も り | を ば | い じ | ー る | も り も | い ち ー | に ー ち | や せ | る や ー | ら | どし た い | こ りゃ | き こ え | た か |}

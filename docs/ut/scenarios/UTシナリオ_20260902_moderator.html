@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>浄めばやし UTモデレーターシナリオ</title>
+  <style>
+    :root { color-scheme:light; --ink:#17202a; --muted:#667085; --line:#d7dce2; --paper:#fff; --soft:#f5f7fa; --accent:#2457d6; --good:#157347; --warn:#9a6700; --danger:#b42318; }
+    * { box-sizing:border-box; }
+    body { margin:0; overflow-x:hidden; background:var(--soft); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; line-height:1.55; }
+    main { width:min(1240px,calc(100% - 32px)); max-width:calc(100vw - 32px); margin:32px auto; background:var(--paper); padding:clamp(24px,4vw,52px); border:1px solid var(--line); border-radius:16px; }
+    h1 { font-size:clamp(28px,4vw,42px); line-height:1.15; margin:0 0 12px; }
+    h2 { margin-top:48px; padding-bottom:10px; border-bottom:2px solid var(--ink); }
+    .meta { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin:20px 0; color:var(--muted); }
+    .callout { padding:16px 18px; background:#eef3ff; border-left:4px solid var(--accent); border-radius:8px; }
+    .callout.amber { background:#fff8e6; border-left-color:var(--warn); }
+    table { width:100%; border-collapse:collapse; margin:18px 0 30px; font-size:14px; }
+    th,td { padding:12px; border:1px solid var(--line); vertical-align:top; text-align:left; }
+    th { background:#edf0f4; }
+    .id { font-weight:750; color:var(--accent); white-space:nowrap; }
+    .source { color:var(--muted); font-size:12px; }
+    .risk-low { color:var(--good); }
+    .risk-medium { color:var(--warn); }
+    .risk-high { color:var(--danger); font-weight:700; }
+    code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.92em; }
+    h1,h2,p,.callout,.meta span { overflow-wrap:anywhere; }
+    footer { margin-top:48px; color:var(--muted); font-size:13px; }
+    @media (max-width:800px) { table { display:block; overflow-x:auto; } th,td { min-width:150px; } }
+    @media print { body { background:#fff; } main { width:100%; margin:0; border:0; padding:20px; } table { font-size:11px; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>浄めばやし UTモデレーターシナリオ</h1>
+    <div class="meta">
+      <span>モード: hybrid</span>
+      <span>環境: local（http://127.0.0.1:8972/）</span>
+      <span>作成: 2026-09-02</span>
+      <span>改訂: —</span>
+      <span>シナリオ数: 15</span>
+      <span>設定: ut.config.yaml</span>
+    </div>
+  </header>
+
+  <div class="callout">
+    参加者へ期待結果や理想操作を先に見せない。結果は実施中に <code>results.jsonl</code> へ逐次保存する。
+    <code>observed</code> は事実だけを書き、<code>interpretation</code> は<strong>空のまま</strong>渡す（解釈は分析工程の持ち場）。
+  </div>
+
+  <h2>0. 目的・範囲・前提</h2>
+  <ul>
+    <li><strong>対象ユーザー</strong>: リンクを踏んで初めて来た人。『月蝕綺譚』は知っているが、本作固有のルール（闇の札だけを叩く・百八枚で満願・曲が替わる・稽古・番付）は知らない。</li>
+    <li><strong>対象ジャーニー</strong>: 開く → 何のゲームか分かる → 帳をくぐる → 最初の1枚をとめる → 浄化と誤操作の違いを知る → 速さの上がりと曲の切り替わりに気づく → 満願に届く → 結果を読む → 図鑑を見る → もう一度／再訪 → 音を切る → 稽古を探す → 順位を探す → 別の配布経路。</li>
+    <li><strong>対象外</strong>: 速度曲線・段の割り当ての妥当性そのもの（値の裁定は企画の持ち場）、二次創作ガイドライン適合、実機での体感速度・音の折り返し（<code>docs/DEVELOPMENT.md</code> に「オーナーの耳・実機待ち」と明記済みの2件）、わいわいの枠（iframe）内の本物の番付描画。</li>
+    <li><strong>実施環境</strong>: このリポジトリを観察スクリプトが <code>http://127.0.0.1:8972/</code> 相当のローカルポートで配信したもの（実行時は空きポートを自動選択）。<strong>本番 origin（github.io・わいわいタウン）では実施しない</strong>——枠の外では localStorage に記録が落ちるため、本番の <code>kiyome-bayashi_save</code>（オーナーの最高枚数・図鑑）を書き換えてしまう。<code>waiwai.town</code> 宛のリクエストは全件遮断し、束の保存・番付の送信・番付の取得は自作 stub（<code>window.waiwai</code>）に差し替える。</li>
+    <li><strong>受入の正本</strong>: <code>docs/SPEC.md</code>（節番号で追跡。§2 盤面・§3 速度・§4 曲が替わる夜／開幕・§5 音・§6 稽古・§7 番付）、<code>README.md</code>、<code>docs/DEVELOPMENT.md</code> 末尾（2026-09-02 の節・「満願の見せ場」が未着手と明記）。</li>
+    <li><strong>前回との比較</strong>: 本作は初回のUT（目付）。<code>scripts/playtest.js</code>（機械検査9件）は既に緑だが、あれは「終わりまで行くか・送信0か」を見る検査で、<strong>初見の人の理解・迷い・表示の食い違いは別の観点</strong>として本UTで見る。</li>
+  </ul>
+
+  <div class="callout amber">
+    <strong>実施順の逸脱について（明示）</strong>: 設定の <code>execution.order</code> は非破壊→可逆変更→不可逆の順だが、
+    本作は<strong>案内カード（A-1）を経ないと盤面に入れない</strong>単一の遊び体験であり、体験順に実施する。
+    可逆変更は <code>localStorage</code> の1キー（<code>kiyome-bayashi_save</code> の束、UT用 origin に限る）に限られ、
+    <strong>不可逆・外部影響の操作は、枠の外で開く限り存在しない</strong>（<code>submitScore</code> は自作 stub が受け、実際の
+    waiwai.town へは1件も送らない。<code>#autotest</code>／<code>#autocut</code> は記録も番付も触らない設計＝<code>canSubmitScore()</code>）。</li>
+  </div>
+
+  <h2>A. 開幕と案内</h2>
+  <table>
+    <thead><tr><th>No.</th><th>開始状態・参加者タスク</th><th>成功条件・期待結果</th><th>観察点・中立プローブ</th><th>リスク・データ</th><th>結果</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="id">A-1</span><div class="source">SPEC §2 開幕・案内 / src/page.html #title-overlay</div></td>
+        <td><strong>開始:</strong> localStorage 空。URL を開いた直後。<br><strong>タスク:</strong> 何のゲームで、自分は何をすればいいのかを掴む（操作はまだしない）</td>
+        <td>案内の絵（満月の下の四筋）が先に出て、案内カード（題字・副題・遊び方4行・釦3つ）が押せる状態になる。遊び方4行だけで「四筋の闇の札だけをタップして浄める」「色の札／取りこぼしで終わる」「百八枚で満願」が伝わる</td>
+        <td><strong>観察:</strong> 押せる状態になるまでの秒数／遊び方4行のどこを読むか／釦3つ（月夜に入る・静かに入る・稽古で入る）の違いを見分けるか<br><strong>必要時のみ:</strong> 「いま画面に何が見えていますか」</td>
+        <td><span class="risk-low">non-mutating</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><span class="id">A-2</span><div class="source">SPEC §2 開幕・案内（帳） / src/game.js begin()</div></td>
+        <td><strong>開始:</strong> 案内カード表示中。<br><strong>タスク:</strong> 遊び始める</td>
+        <td>「月夜に入る」を押すと黒緞子の帳が閉じた状態で現れ、0.5秒後に左右へ開き始める。<strong>開ききるまで叩けない</strong>（SPEC の文言どおり）</td>
+        <td><strong>観察:</strong> 入力が解禁される時刻（<code>pausedUntil</code>）と、帳が視覚的に開ききる時刻を、それぞれ実測して比べる（<code>.door-l</code>／<code>.door-r</code> の <code>getBoundingClientRect()</code> とタップの成否を時系列で）<br><strong>必要時のみ:</strong> 「いま何が起きていると思いますか」</td>
+        <td><span class="risk-medium">reversible-mutation</span><br>localStorage: kiyome-bayashi_save（sound）</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>B. 遊び</h2>
+  <table>
+    <thead><tr><th>No.</th><th>開始状態・参加者タスク</th><th>成功条件・期待結果</th><th>観察点・中立プローブ</th><th>リスク・データ</th><th>結果</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="id">B-3</span><div class="source">SPEC §2 入力（1タップ＝1枚）</div></td>
+        <td><strong>開始:</strong> 帳が完全に開ききった盤面。<br><strong>タスク:</strong> 最初の1枚を叩く</td>
+        <td>画面のどこをタップしても、その瞬間の「最下段の未浄の行」の闇の筋と一致すれば浄化する（指の高さは判定に使わない）</td>
+        <td><strong>観察:</strong> 最初の操作（タップの位置・筋を見て叩くか）／狙いどおりに浄化されるか</td>
+        <td><span class="risk-low">non-mutating</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><span class="id">B-4</span><div class="source">SPEC §2 闇の札の金の枠 / §4 浄化の演出</div></td>
+        <td><strong>開始:</strong> 数枚浄めた盤面。<br><strong>タスク:</strong> 浄化の見た目に気づく</td>
+        <td>叩くと金の輪が外へ広がって消え、闇の札（金の枠つき）が段10の極彩の絵に差し替わる。実機寸法（390×844）で金の枠が3枚とも判別できる（第1便で見つかった「枠が薄すぎて見えない」不具合が直っているか）</td>
+        <td><strong>観察:</strong> 浄化の瞬間に気づくか（何を見て：光・絵の差し替わり）／闇の札と色の札を実機寸法の写真で見分けられるか</td>
+        <td><span class="risk-low">non-mutating</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><span class="id">B-5</span><div class="source">SPEC §2「間違った操作は色の札の筋を叩く1つだけ」/ §3 取りこぼし</div></td>
+        <td><strong>開始:</strong> 遊びの途中。<br><strong>タスク（2通り）:</strong> ①色の札の筋をわざと叩く ②何も叩かずに待つ</td>
+        <td>①②どちらも同じ結果画面（「夜が明けた」）で終わる。判定は「一致か否か」の一本だけで、例外が無い</td>
+        <td><strong>観察:</strong> ①②それぞれの結果画面の文言・称号が同じ型か／取りこぼしまでに要した時間</td>
+        <td><span class="risk-medium">reversible-mutation</span><br>localStorage: kiyome-bayashi_save（best/title）</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><span class="id">B-6</span><div class="source">SPEC §4「曲が替わる夜」/ src/game.js SONGS</div></td>
+        <td><strong>開始:</strong> 遊びの途中。<br><strong>タスク:</strong> 速さの変化と、色の札・背景が変わることに気づく</td>
+        <td>浄めるたびに速くなる。曲が一巡し終え、かつ枚数が次の曲の最低枚数（90/200/300/430/560）に届いていれば、色の札の段と背景・月の演出が切り替わる（鐘の音＋曲名の浮き文字）</td>
+        <td><strong>観察:</strong> 速くなったことへの言及／色の札の絵柄が変わったことに気づくか／浮き文字（曲名）に気づくか</td>
+        <td><span class="risk-low">non-mutating</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><span class="id">B-7</span><div class="source">SPEC §3「終わり方」/ §4「見せ場」/ DEVELOPMENT.md 2026-09-02「次に手を付けるもの」</div></td>
+        <td><strong>開始:</strong> 遊びの途中（自力で届かない場合、進行役が <code>#autotest</code> で108枚まで見せる。その旨を results に記録する）。<br><strong>タスク:</strong> 百八枚（満願）まで浄める</td>
+        <td>SPEC §4「見せ場」の記述どおりなら、108枚到達時に鐘＋浮き文字などの区切りが出るはず。<strong>実際に何が起きる／起きないかをそのまま記録する</strong></td>
+        <td><strong>観察:</strong> 108枚を跨いだ瞬間、画面・音（<code>window.__se.counts</code>）に変化があるか／プレイヤーが「達成した」と気づける手がかりがその場にあるか、それとも結果画面まで分からないか</td>
+        <td><span class="risk-low">non-mutating</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>C. 結果札・図鑑・称号・記録</h2>
+  <table>
+    <thead><tr><th>No.</th><th>開始状態・参加者タスク</th><th>成功条件・期待結果</th><th>観察点・中立プローブ</th><th>リスク・データ</th><th>結果</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="id">C-8</span><div class="source">SPEC §4「開幕・案内・結果」/ page.html #overlay</div></td>
+        <td><strong>開始:</strong> 夜明け直後の結果画面。<br><strong>タスク:</strong> 結果を読み取る</td>
+        <td>称号・浄めた枚数・最高（更新なら「更新」の印）・その夜いちばん浄めた柱の絵・図鑑の入口（n/29）が読める。375×667 でも「もう一夜」まで送り無しで届く</td>
+        <td><strong>観察:</strong> 各項目を見つけられるか／「最高」が自分の記録だと分かるか／柱の絵を「いちばん浄めた柱」だと分かるか</td>
+        <td><span class="risk-low">non-mutating</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><span class="id">C-9</span><div class="source">SPEC §8 図鑑 / page.html #zukan</div></td>
+        <td><strong>開始:</strong> 結果画面。<br><strong>タスク:</strong> 図鑑を開いて閉じる</td>
+        <td>29柱の升目が開き、浄めた柱だけ段10の絵で灯る（未浄は段03のまま）。✕または外側タップで閉じられる</td>
+        <td><strong>観察:</strong> 図鑑の入口（釦）を見つけられるか／灯・未灯の違いに気づくか／閉じ方が分かるか</td>
+        <td><span class="risk-low">non-mutating</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><span class="id">C-10</span><div class="source">SPEC §7 束 / src/game.js loadSave()</div></td>
+        <td><strong>開始:</strong> 一夜を終えたあと。進行役がページを再読み込みする。<br><strong>タスク:</strong> 自分の記録が残っているかを確かめる</td>
+        <td>再読み込み後の案内カードに「これまでの誉れ：〈称号〉」、HUD の「最高」に前の夜の枚数が出る（0が一瞬見える／見えないを実測）</td>
+        <td><strong>観察:</strong> 「これまでの誉れ」を自分の記録と結びつけられるか／0が見える瞬間があるか</td>
+        <td><span class="risk-low">non-mutating</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>D. 稽古</h2>
+  <table>
+    <thead><tr><th>No.</th><th>開始状態・参加者タスク</th><th>成功条件・期待結果</th><th>観察点・中立プローブ</th><th>リスク・データ</th><th>結果</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="id">D-11</span><div class="source">SPEC §6 稽古モード</div></td>
+        <td><strong>開始:</strong> 案内カード表示中。<br><strong>タスク:</strong> 練習できる方法を探し（釦「稽古で入る」／題字3タップの両方を試す）、稽古中にわざと外す・わざと取りこぼす</td>
+        <td>どちらの入り方でも「稽古」の印が出る。稽古中は色の札を叩いても（「外」の印）、取りこぼしても（「落」の印）終わらず、<code>__forceOver()</code> で手仕舞いするまで続く。手仕舞い後、束（localStorage）は稽古開始前と同じ・番付への送信は0回</td>
+        <td><strong>観察:</strong> 2つの入り方をそれぞれ見つけられるか／本番と稽古の見分けがつくか／記録が残らないことをどう受け取るか</td>
+        <td><span class="risk-low">non-mutating</span><br>（束は変化しないことを確認する項目）</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>E. 番付と記録の置き場</h2>
+  <table>
+    <thead><tr><th>No.</th><th>開始状態・参加者タスク</th><th>成功条件・期待結果</th><th>観察点・中立プローブ</th><th>リスク・データ</th><th>結果</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="id">E-12</span><div class="source">SPEC §7-a「送らない経路」/ README「番付」/ src/game.js canSubmitScore()</div></td>
+        <td><strong>開始:</strong> ①記録が一度も無い状態で0枚の夜 ②既に記録がある状態で0枚の夜。<br><strong>タスク:</strong> 進行役が stub SDK 越しに両方を再現する</td>
+        <td>①は番付へ送らない（<code>submitScore</code> 呼び出し0回）。②は送る（README・コードのコメントどおりの設計）。番付が開ける場合は上位10人＋自分の行が出る</td>
+        <td><strong>観察:</strong> ①②それぞれの送信有無・結果画面の順位表示の有無</td>
+        <td><span class="risk-medium">reversible-mutation</span><br>stub 経由のみ・本物の番付には触れない</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><span class="id">E-13</span><div class="source">SPEC §7-a / README「番付」節</div></td>
+        <td><strong>開始:</strong> <code>sdk.js</code> が読めない環境（Artifact 相当。進行役がネットワークを遮断して再現）。<br><strong>タスク:</strong> 順位を探す</td>
+        <td>順位の行が出ない<strong>だけ</strong>で、エラー文言も出ない。あわせて README「番付」節の記載（ボードID・送る点の式）が実装と一致しているかを突き合わせる</td>
+        <td><strong>観察:</strong> 順位を探して何秒画面を見るか／エラーのように見える表示が無いか／README の文面と <code>src/game.js</code> の値の一致・不一致</td>
+        <td><span class="risk-low">non-mutating</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>F. 端末・画面</h2>
+  <table>
+    <thead><tr><th>No.</th><th>開始状態・参加者タスク</th><th>成功条件・期待結果</th><th>観察点・中立プローブ</th><th>リスク・データ</th><th>結果</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="id">F-14</span><div class="source">SPEC §2「盤の高さを伸ばさない」/ SHITSURAE safe-area</div></td>
+        <td><strong>開始:</strong> 遊びの途中。<br><strong>タスク（進行役操作）:</strong> 375×667・390×844・横向き（844×390）の3寸法で開き直す</td>
+        <td>盤（canvas）は縦横比を保って縮むだけで、HUD・footer・結果札がどの寸法でも画面内に収まる（送り無し・はみ出し無し）</td>
+        <td><strong>観察:</strong> canvas と header/footer の実測寸法・画面をはみ出す要素の有無</td>
+        <td><span class="risk-low">non-mutating</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><span class="id">F-15</span><div class="source">SPEC §9 受け入れ基準5（12px床・押し所24px）</div></td>
+        <td><strong>開始:</strong> 案内カード・結果札の各表示。<br><strong>タスク（進行役操作）:</strong> ボタン・文字の実寸を測る</td>
+        <td>本文の文字は12px未満が無い。押せる要素（釦）は両辺24px以上</td>
+        <td><strong>観察:</strong> 各要素の <code>getBoundingClientRect()</code> と <code>font-size</code> の実測値</td>
+        <td><span class="risk-low">non-mutating</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>実施前の確認</h2>
+  <ul>
+    <li>ローカル配信が 200 を返すこと（観察スクリプトが自分で立てて自分で閉じる）</li>
+    <li>開始前の <code>localStorage</code> を baseline として控えること（空であることの確認を含む）</li>
+    <li><code>waiwai.town</code> 宛のリクエストは全件遮断し、stub の SDK に差し替えること（本物の番付・記録には一切触れない）</li>
+    <li>画面幅を記録すること。主は 390×844（iPhone 相当・DPR2）、副に 375×667（SE）・844×390（横向き）・1280×800（PC、開幕時間のみ）</li>
+    <li>スクリーンショットを <code>runs/&lt;date&gt;-&lt;run-id&gt;/screenshots/</code> に残すこと（canvas の中身は画像でしか残らない）</li>
+    <li>AI が観察役を務めた分は <code>participant_id</code> を <code>AI-P01</code> のように区別する。人間の初見の言語化・迷い・体感速度・音の実聴・マナーモードは原理的に演じられないので<strong>未実施のまま残す</strong>（実機テスターの持ち場）</li>
+  </ul>
+
+  <footer>UT moderator view · 浄めばやし 2026-09-02 v1</footer>
+</main>
+</body>
+</html>

@@ -1,0 +1,38 @@
+{
+  "schema_version": "2.0",
+  "run_id": "q8h3",
+  "project_name": "浄めばやし",
+  "test_mode": "hybrid",
+  "environment": "local (http://127.0.0.1:<自動割当ポート>/ — 観察スクリプトが配信・waiwai.town 宛リクエストは全件遮断し stub SDK に差し替え)",
+  "config_path": "ut.config.yaml",
+  "scenario_source": "docs/ut/scenarios/UTシナリオ_20260902_moderator.html",
+  "started_at": "2026-09-02T23:34:00+09:00",
+  "updated_at": "2026-09-02T23:54:30+09:00",
+  "status": "closed",
+  "participant_ids": ["AI-P01"],
+  "scenario_counts": {
+    "total": 15,
+    "completed": 10,
+    "with_friction": 5,
+    "failed_or_ng": 0,
+    "blocked": 0,
+    "skipped": 0,
+    "pending": 0
+  },
+  "completed_scenario_ids": [
+    "A-1", "A-2", "B-3", "B-4", "B-5", "B-6", "B-7",
+    "C-8", "C-9", "C-10", "D-11", "E-12", "E-13", "F-14", "F-15"
+  ],
+  "pending_scenario_ids": [],
+  "created_test_data": [
+    "localStorage@127.0.0.1:<port>（各 browser context・閉じた時点で消滅）: kiyome-bayashi_save 相当のキー、waiwai:kiyome-bayashi_save（stub SDK 経由）"
+  ],
+  "cleanup_status": "completed",
+  "notes": [
+    "参加者は人間ではない。AI（検品担当・結）が初見の遊び手を代行し、puppeteer-core（Chrome実機バイナリ）で実際に操作した。人間の初見でしか分からない項目（言語化・体感速度・音の実聴・マナーモード）は未実施のまま残す",
+    "本番 origin・わいわいタウンの枠には一切触れない。waiwai.town 宛のリクエストは全件遮断し、束の保存/読込・番付の送信/取得は自作 stub（window.waiwai）に差し替えた",
+    "A-2 は当初「1500msの入力解禁時点で帳が最大500msぶん開ききっていない」と見えたが、実測（door-l/door-rのgetBoundingClientRect）をやり直すと、その時点で残っているのは左右各26px（画面幅390pxの6.7%）のみで、pointer-events:noneのため機能上の影響は無いと判明。最初の粗い測り方（タップ+150ms待ちの後にスクショ）は時刻がずれていたため、精密な定点観測（tapなしで200ms刻みにスクショ）に組み直した",
+    "B-7（満願到達時にwhiffが鳴るか）は自動再生taps中に2回とも早期の誤クリックで意図した108枚に届かず、14枚・17枚の通常終了での確認に留まった。playSe('whiff')がcleared判定より前に無条件で呼ばれる点はコード読解（src/game.js 251行目）で確認済み",
+    "最初の観察スクリプトでCDP Input.dispatchMouseEventがNaN座標で落ちる事故が2回あった（lowestUncleared()が一瞬nullを返す競合）。以後はJS側でPointerEventを直接dispatchし、lane値が数値であることを確認してから叩く形に直した"
+  ]
+}

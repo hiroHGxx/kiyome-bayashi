@@ -1,0 +1,157 @@
+<title>浄めばやし 囃子帖</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=M+PLUS+Rounded+1c:wght@800&display=swap">
+<style>
+  /* 宵闇に金（data/design-tokens.json）。ゲームと同じ地色で、同じ琴の音を聴くための帖 */
+  :root { --night:#131320; --night-2:#1B1B2E; --line:#4a4468; --ink:#E8E4D8; --ink-dim:#9D93B5; --moon:#F0CE7E; --kindei:#D9A94C; --shokko:#E0562F; --r-btn:5px; --r-card:10px; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { background:var(--night); color:var(--ink); }
+  body { font-family:"Shippori Mincho B1","Hiragino Mincho ProN",serif; line-height:1.6; -webkit-tap-highlight-color:transparent; padding: 16px 14px calc(24px + env(safe-area-inset-bottom,0px)); }
+  main { max-width:480px; margin:0 auto; display:flex; flex-direction:column; gap:14px; }
+  h1 { font-size:22px; font-weight:800; letter-spacing:.16em; color:var(--moon); text-wrap:balance; }
+  h1 small { display:block; font-size:12px; letter-spacing:.14em; color:var(--ink-dim); font-weight:500; margin-top:2px; }
+  p.lead { font-size:13px; color:var(--ink); }
+  p.lead b { color:var(--moon); font-weight:700; }
+  section { background:var(--night-2); border:1px solid var(--line); border-radius:var(--r-card); padding:14px; display:flex; flex-direction:column; gap:10px; }
+  h2 { font-size:12px; letter-spacing:.2em; color:var(--ink-dim); font-weight:500; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { font:inherit; font-size:13px; padding:7px 11px; min-height:32px; border-radius:999px; border:1px solid var(--line); background:transparent; color:var(--ink); cursor:pointer; }
+  .chip[aria-pressed="true"] { border-color:var(--kindei); background:rgba(217,169,76,.14); color:var(--moon); }
+  .modes { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .mode { font:inherit; font-size:13px; letter-spacing:.06em; padding:12px 8px; min-height:48px; border-radius:var(--r-btn); border:1px solid var(--kindei); background:transparent; color:var(--moon); cursor:pointer; line-height:1.35; }
+  .mode small { display:block; font-size:12px; color:var(--ink-dim); letter-spacing:0; }
+  .mode.playing { background:var(--moon); color:var(--night); }
+  .mode.playing small { color:var(--night); }
+  #stop { grid-column:1 / -1; border-color:var(--line); color:var(--ink-dim); min-height:40px; padding:8px; }
+  #pad { touch-action:none; user-select:none; -webkit-user-select:none; min-height:150px; border-radius:var(--r-card); border:2px solid var(--kindei); background:linear-gradient(180deg, rgba(240,206,126,.06), rgba(240,206,126,.0)); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; cursor:pointer; }
+  #pad:active { background:rgba(240,206,126,.18); }
+  #pad .big { font-size:16px; font-weight:800; letter-spacing:.3em; color:var(--moon); }
+  #pad .count { font-family:"M PLUS Rounded 1c",sans-serif; font-size:32px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums; }
+  #pad .count small { font-size:13px; font-family:"Shippori Mincho B1",serif; font-weight:500; color:var(--ink-dim); margin-left:4px; }
+  .strip { display:flex; gap:4px; overflow-x:auto; padding:4px 0 6px; scrollbar-width:thin; }
+  .note { flex:0 0 auto; font-family:"M PLUS Rounded 1c",sans-serif; font-size:12px; font-weight:800; padding:4px 6px; border-radius:4px; border:1px solid var(--line); color:var(--ink-dim); min-width:38px; text-align:center; }
+  .note.on { border-color:var(--moon); color:var(--night); background:var(--moon); }
+  .note.done { color:var(--ink); border-color:var(--kindei); }
+  .meta { font-size:12px; color:var(--ink-dim); }
+  .meta a { color:var(--moon); }
+  ul.judge { font-size:13px; padding-left:1.2em; display:flex; flex-direction:column; gap:4px; }
+  button:focus-visible { outline:3px solid var(--moon); outline-offset:2px; }
+  footer { font-size:12px; color:var(--ink-dim); text-align:center; letter-spacing:.02em; }
+</style>
+<main>
+  <h1>浄めばやし 囃子帖<small>版権の切れた名曲を琴で鳴らして、耳で決める帖</small></h1>
+  <p class="lead">誰もが知っていて版権の切れた曲の候補です。譜は Wikipedia／Wikimedia Commons の楽譜データから機械で読み、ゲームと同じ琴の音で鳴らします。まず<b>「本来の拍で」</b>で曲を確かめ、次に<b>ゲームの速さ</b>（1タップ1音・拍なし）でも曲だと分かるか、を聴いてください。</p>
+
+  <section>
+    <h2>どの節を鳴らすか</h2>
+    <div class="chips" id="chips"></div>
+    <div class="meta" id="phrase-meta"></div>
+  </section>
+
+  <section>
+    <h2>鳴らし方</h2>
+    <div class="modes">
+      <button class="mode" data-mode="beat">本来の拍で<small>歌の長さどおり</small></button>
+      <button class="mode" data-mode="fixed" data-ms="650">後半の速さ<small>0.65秒に1枚</small></button>
+      <button class="mode" data-mode="fixed" data-ms="350">延長の速さ<small>0.35秒に1枚</small></button>
+      <button class="mode" data-mode="fixed" data-ms="1000">序盤の速さ<small>1.0秒に1枚</small></button>
+      <button class="mode" id="stop">止める</button>
+    </div>
+    <div class="strip" id="strip"></div>
+  </section>
+
+  <section>
+    <h2>叩いて聴く（ゲームと同じ、1タップ＝1音）</h2>
+    <div id="pad" role="button" tabindex="0" aria-label="叩くと次の音が鳴る">
+      <div class="big">こ こ を 叩 く</div>
+      <div class="count"><span id="tap-n">0</span><small>音め</small></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>判断してほしいこと</h2>
+    <ul class="judge">
+      <li>「本来の拍で」で<b>その曲だと分かるか</b>（譜どおりなので、分からなければ曲の選び方の問題です）</li>
+      <li>「序盤の速さ」「後半の速さ」「延長の速さ」でも曲だと分かるか。ゲームでは1タップ1音で拍が消え、音の上下だけが残ります</li>
+      <li>宵闇・月・妖の雰囲気に合うか。1曲でいくか、108枚ごとの節目で曲を替えるか（段が上がるたびに次の曲）</li>
+    </ul>
+    <p class="meta">どれも作曲者の没後70年を過ぎた曲か伝承曲で、旋律の権利は切れています（編曲は自作＝琴の合成音）。出どころは節を選ぶと下に出ます。</p>
+  </section>
+  <footer>『月蝕綺譚 -Luna Occulta-』二次創作（非公式）／ 旋律は版権の切れた名曲・伝承曲、編曲（琴の合成音）は自作</footer>
+</main>
+<script>
+(() => {
+  "use strict";
+  const DATA = __PHRASES__;   // {cell: 秒/16分音符, phrases: {名前: [{m: MIDI, n: 16分の数}]}}
+  const NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+  const nn = (m) => NAMES[m % 12] + (Math.floor(m / 12) - 1);
+  const $ = (id) => document.getElementById(id);
+
+  /* ---- 琴（ゲーム src/game.js と同じ Karplus-Strong。定数も同値） ---- */
+  const SFX_BUS = 0.9, KOTO_RING_S = 2.4, KOTO_DECAY = 0.996, KOTO_TAU_S = 0.8, KOTO_WOB_VOL = 0.08, KOTO_WOB_HZ = 0.004;
+  let audioCtx = null, sfxBus = null;
+  function getAudioCtx() {
+    if (!audioCtx) { try { const AC = window.AudioContext || window.webkitAudioContext; audioCtx = new AC(); sfxBus = audioCtx.createGain(); sfxBus.gain.value = SFX_BUS; sfxBus.connect(audioCtx.destination); } catch (e) { return null; } }
+    if (audioCtx.state === "suspended") { try { audioCtx.resume(); } catch (e) {} }
+    return audioCtx;
+  }
+  function kotoWave(freq, sr) {
+    const len = Math.round(sr * KOTO_RING_S), d = new Float32Array(len), N = Math.max(2, Math.round(sr / freq));
+    let seed = (Math.round(freq) * 2654435761) >>> 0;
+    const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+    for (let i = 0; i < N; i++) d[i] = rnd() * 2 - 1;
+    for (let j = N; j < len; j++) d[j] = KOTO_DECAY * 0.5 * (d[j - N] + d[j - N + 1]);
+    const tau = sr * KOTO_TAU_S, fade = Math.round(sr * 0.1); let peak = 0;
+    for (let k = 0; k < len; k++) { let e = Math.exp(-k / tau); if (k > len - fade) e *= (len - k) / fade; d[k] *= e; if (Math.abs(d[k]) > peak) peak = Math.abs(d[k]); }
+    if (peak > 0) for (let m = 0; m < len; m++) d[m] *= 0.9 / peak;
+    return d;
+  }
+  const cache = {}; const live = [];
+  function pluck(midi, when) {
+    const a = getAudioCtx(); if (!a) return;
+    const f0 = 440 * Math.pow(2, (midi - 69) / 12), freq = f0 * (1 + (Math.random() * 2 - 1) * KOTO_WOB_HZ);
+    const key = Math.round(f0); let buf = cache[key];
+    if (!buf) { const w = kotoWave(f0, a.sampleRate); buf = a.createBuffer(1, w.length, a.sampleRate); buf.getChannelData(0).set(w); cache[key] = buf; }
+    const src = a.createBufferSource(); src.buffer = buf; src.playbackRate.value = freq / f0;
+    const g = a.createGain(); g.gain.value = 0.7 * (1 + (Math.random() * 2 - 1) * KOTO_WOB_VOL);
+    src.connect(g); g.connect(sfxBus); src.start(when == null ? a.currentTime : when); live.push(src);
+    if (live.length > 64) live.splice(0, live.length - 64);
+  }
+
+  /* ---- 節の選択と譜の帯 ---- */
+  const names = Object.keys(DATA.phrases); let cur = names[0]; const ph = (k) => (Array.isArray(DATA.phrases[k]) ? { notes: DATA.phrases[k], cell: DATA.cell, src: "" } : DATA.phrases[k]); let notes = ph(cur).notes;
+  const chips = $("chips"), strip = $("strip"), meta = $("phrase-meta");
+  function renderChips() { chips.textContent = ""; for (const k of names) { const b = document.createElement("button"); b.className = "chip"; b.type = "button"; b.textContent = k; b.setAttribute("aria-pressed", k === cur); b.addEventListener("click", () => { stop(); cur = k; notes = ph(k).notes; renderChips(); renderStrip(); }); chips.appendChild(b); } }
+  function renderStrip() {
+    strip.textContent = ""; tapIdx = 0; $("tap-n").textContent = "0";
+    for (const n of notes) { const s = document.createElement("span"); s.className = "note"; s.textContent = nn(n.m); strip.appendChild(s); }
+    const secs = notes.reduce((t, n) => t + n.n, 0) * ph(cur).cell;
+    meta.textContent = notes.length + " 音・本来の拍で約 " + secs.toFixed(0) + " 秒" + (ph(cur).src ? "　／　" + ph(cur).src : "");
+  }
+  function mark(i) { const kids = strip.children; for (let k = 0; k < kids.length; k++) kids[k].className = "note" + (k < i ? " done" : k === i ? " on" : ""); if (kids[i]) kids[i].scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" }); }
+
+  /* ---- 自動再生（本来の拍／等間隔） ---- */
+  let timers = []; let playingBtn = null;
+  function stop() { for (const t of timers) clearTimeout(t); timers = []; for (const s of live) { try { s.stop(); } catch (e) {} } live.length = 0; if (playingBtn) playingBtn.classList.remove("playing"); playingBtn = null; mark(-1); }
+  function play(btn) {
+    stop(); const a = getAudioCtx(); if (!a) return; playingBtn = btn; btn.classList.add("playing");
+    const fixedMs = btn.dataset.mode === "fixed" ? parseInt(btn.dataset.ms, 10) : 0;
+    let t = 0; const t0 = a.currentTime + 0.08;
+    notes.forEach((n, i) => {
+      pluck(n.m, t0 + t); timers.push(setTimeout(() => mark(i), t * 1000 + 80));
+      t += fixedMs ? fixedMs / 1000 : n.n * ph(cur).cell;
+    });
+    timers.push(setTimeout(() => { if (playingBtn === btn) { btn.classList.remove("playing"); playingBtn = null; mark(-1); } }, t * 1000 + 300));
+  }
+  for (const b of document.querySelectorAll(".mode[data-mode]")) b.addEventListener("click", () => play(b));
+  $("stop").addEventListener("click", stop);
+
+  /* ---- 叩いて聴く ---- */
+  let tapIdx = 0;
+  const pad = $("pad");
+  function tap(e) { if (e) e.preventDefault(); if (playingBtn) stop(); if (!notes.length) return; const n = notes[tapIdx % notes.length]; pluck(n.m); mark(tapIdx % notes.length); tapIdx++; $("tap-n").textContent = tapIdx; }
+  pad.addEventListener("pointerdown", tap);
+  pad.addEventListener("keydown", (e) => { if (e.key === " " || e.key === "Enter") tap(e); });
+
+  renderChips(); renderStrip();
+})();
+</script>

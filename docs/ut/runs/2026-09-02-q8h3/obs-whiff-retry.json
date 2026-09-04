@@ -1,0 +1,40 @@
+{
+  "missedEarly": false,
+  "statsBefore": {
+    "purified": 14,
+    "pillars": 14,
+    "manganAt": 0,
+    "over": false,
+    "stage": 0,
+    "rank": "06",
+    "song": "荒城の月",
+    "songStep": 14,
+    "ids": [
+      "shiba",
+      "anne",
+      "janome",
+      "aun",
+      "sakuya",
+      "atoza",
+      "yui",
+      "oen",
+      "shinra",
+      "nekomata",
+      "kohaku",
+      "orochi"
+    ]
+  },
+  "beforeForce": {
+    "whiff": 0,
+    "end": 0
+  },
+  "afterForce": {
+    "whiff": 1,
+    "end": 0
+  },
+  "result": {
+    "cleared": false,
+    "heading": "夜が明けた",
+    "score": "14枚"
+  }
+}

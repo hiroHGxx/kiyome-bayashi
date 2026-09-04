@@ -1,0 +1,1 @@
+ \relative f' { \key e \minor \time 1/2 | d e8 g | a4 b | a g8( d) | e e g a | b4 b8( a) | a2( | a4) r | e4 g8 a | b4 b8( a) | a4 g8( d) | e a4. | g4 g8( e) | e2( | e4) r | }

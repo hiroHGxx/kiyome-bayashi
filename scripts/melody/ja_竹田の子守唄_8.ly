@@ -1,0 +1,1 @@
+ \relative f' { \key e \minor \time 2/4 | e4 g8 a | b4 d | b a8( g) | e4 g8 a | b4 b8( a) | a2 | d,4 e8 g | a4 b | b4 a8( g) | e4 a | g4 g8( e) | e2 |}\addlyrics { も り も | い や | が る | ぼん か ら | む こう | にゃ | ゆ き も | ち ら | つ く | こ も | な く | し |}

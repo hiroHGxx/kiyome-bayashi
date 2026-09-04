@@ -27,20 +27,21 @@ const ready = (p) => p.waitForFunction(() => { const ov = document.getElementByI
 const tap = async (p) => { const r = await p.$eval("#game", (e) => { const q = e.getBoundingClientRect(); return { x: q.x + q.width / 2, y: q.y + q.height / 2 }; }); await p.mouse.click(r.x, r.y); };
 (async () => {
   const srv = await serve(); const base = `http://127.0.0.1:${srv.address().port}/index.html`; let failed = false;
+  const ONLY = process.env.ONLY || "";   // ONLY=5 のように1本だけ回す
   const check = (name, ok, r) => { console.log((ok ? "✅ " : "❌ ") + name + " " + JSON.stringify(r)); if (!ok) failed = true; };
   // ① 自動プレイで終わりまで（記録は残る・番付へは送らない）
-  { const { browser, page, errors } = await open(base, "#autotest"); const t0 = Date.now();
+  if (!ONLY || ONLY === "1") { const { browser, page, errors } = await open(base, "#autotest"); const t0 = Date.now();
     // 通しながら盤を覗く: 同じ柱が同時に二枚出ていないか（出ると「絵が壊れた」に見える・2026-09-01 実画面で踏んだ）
     let samples = 0, dup = 0, worst = null;
     const watch = setInterval(async () => { try { const ids = await page.evaluate(() => (window.__stats && window.__stats().ids) || []); if (!ids.length) return; samples++; const seen = new Set(); for (const i of ids) { if (seen.has(i)) { dup++; worst = i; break; } seen.add(i); } } catch (e) {} }, 200);
     await page.waitForFunction(() => document.getElementById("overlay").classList.contains("show"), { polling: 300, timeout: 240000 }); clearInterval(watch);
-    const s = await state(page); const mangan = s.stats && s.stats.manganAt ? +(s.stats.manganAt / 1000).toFixed(1) : null;
-    check("自動プレイが百八枚を通せる・送信0", s.over && +s.floors >= 108 && s.submits === 0 && errors.length === 0, { floors: s.floors, 満願まで秒: mangan, 通し秒: +((Date.now() - t0) / 1000).toFixed(1), pillars: s.stats && s.stats.pillars, submits: s.submits, errors });
-    check("満願までが 60〜120 秒（受け入れ基準2）", mangan !== null && mangan >= 60 && mangan <= 120, { 満願まで秒: mangan });
+    const s = await state(page); const sw = s.stats && s.stats.switchAt ? +(s.stats.switchAt / 1000).toFixed(1) : null;
+    check("自動プレイが2曲目まで通せる（96枚超）・送信0", s.over && +s.floors >= 96 && s.submits === 0 && errors.length === 0, { floors: s.floors, 二曲目まで秒: sw, 通し秒: +((Date.now() - t0) / 1000).toFixed(1), pillars: s.stats && s.stats.pillars, submits: s.submits, errors });
+    check("2曲目に入るまでが 60〜120 秒（受け入れ基準2）", sw !== null && sw >= 60 && sw <= 120, { 二曲目まで秒: sw });
     check("同じ柱が盤に二枚出ない", samples > 100 && dup === 0, { 覗いた回数: samples, 重なり: dup, 例: worst });
-    // 束に満願の回数と柱ごとの枚数が残る（SPEC §7・図鑑の元）。SDK 経路（waiwai: の鍵）で数える
+    // 束に柱ごとの枚数が残る（SPEC §7・図鑑の元）。SDK 経路（waiwai: の鍵）で数える
     { const sv = JSON.parse(s.saved || "{}"); const sp = sv.spirits || {}; const ids = Object.keys(sp); const sum = ids.reduce((a, k) => a + sp[k], 0);
-      check("満願の夜が束へ残る（clears・spirits）", sv.clears === 1 && ids.length === 29 && sum === +s.floors, { clears: sv.clears, 柱数: ids.length, 枚数の和: sum, 浄めた枚数: +s.floors }); }
+      check("夜の柱が束へ残る（spirits）", ids.length === 29 && sum === +s.floors, { 柱数: ids.length, 枚数の和: sum, 浄めた枚数: +s.floors }); }
     // 図鑑（29柱・浄めた柱が灯る）。下まで送っても ✕ が残ることを数える＝札ごと送ると閉じられなくなる
     { const zk = await page.evaluate(() => {
         document.getElementById("zukan-open").click();
@@ -57,10 +58,24 @@ const tap = async (p) => { const r = await p.$eval("#game", (e) => { const q = e
       check("図鑑が29柱ぶん灯り、下まで送っても閉じられる", zk.open && zk.升目 === 29 && zk.灯 === 29 && zk.段10 === 29 && zk.閉じ釦が見える && zk.閉じた, zk); }
     await browser.close(); }
   // ② わざと終わる
-  { const { browser, page, errors } = await open(base, "#autocut"); await page.waitForFunction(() => document.getElementById("overlay").classList.contains("show"), { polling: 300, timeout: 60000 }); const s = await state(page); check("わざと終わる・送信0", s.over && s.submits === 0 && errors.length === 0, { ...s, errors }); await browser.close(); }
+  if (!ONLY || ONLY === "2") { const { browser, page, errors } = await open(base, "#autocut"); await page.waitForFunction(() => document.getElementById("overlay").classList.contains("show"), { polling: 300, timeout: 60000 }); const s = await state(page); check("わざと終わる・送信0", s.over && s.submits === 0 && errors.length === 0, { ...s, errors }); await browser.close(); }
   // ③ 稽古は記録を残さない
-  { const { browser, page, errors } = await open(base, "#autotest=20"); await ready(page); await page.evaluate(() => { const l = document.querySelector(".game-title"); for (let i = 0; i < 3; i++) l.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })); }); await page.waitForFunction(() => document.getElementById("overlay").classList.contains("show"), { polling: 300, timeout: 120000 }); const s = await state(page); const sv = JSON.parse(s.saved || "{}"); check("稽古は記録を残さない・送信0", s.over && s.best === "0" && !(sv.best > 0) && !(sv.clears > 0) && Object.keys(sv.spirits || {}).length === 0 && s.submits === 0 && errors.length === 0, { ...s, errors }); await browser.close(); }
+  if (!ONLY || ONLY === "3") { const { browser, page, errors } = await open(base, "#autotest=20"); await ready(page); await page.evaluate(() => { const l = document.querySelector(".game-title"); for (let i = 0; i < 3; i++) l.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })); }); await page.waitForFunction(() => window.__stats && window.__stats().purified >= 20, { polling: 300, timeout: 120000 }); await page.evaluate(() => window.__forceOver && window.__forceOver()); await sleep(800); const s = await state(page); const sv = JSON.parse(s.saved || "{}"); check("稽古は記録を残さない・送信0", s.over && s.best === "0" && !(sv.best > 0) && Object.keys(sv.spirits || {}).length === 0 && s.submits === 0 && errors.length === 0, { ...s, errors }); await browser.close(); }
   // ④ 手で遊ぶ（押せるまで待つ→月夜に入る→0で終わる→記録なしなら送らない）
-  { const { browser, page, errors } = await open(base, ""); await ready(page); await page.click("#start"); await sleep(1200); await page.evaluate(() => window.__forceOver && window.__forceOver()); await sleep(800); const s = await state(page); check("手で遊ぶ・記録が無い人の0は送らない", s.over && s.submits === 0 && !s.rankLine && errors.length === 0, { ...s, errors }); await browser.close(); }
+  if (!ONLY || ONLY === "4") { const { browser, page, errors } = await open(base, ""); await ready(page); await page.click("#start"); await sleep(1200); await page.evaluate(() => window.__forceOver && window.__forceOver()); await sleep(800); const s = await state(page); check("手で遊ぶ・記録が無い人の0は送らない", s.over && s.submits === 0 && !s.rankLine && errors.length === 0, { ...s, errors }); await browser.close(); }
+  // ⑤ 延長620枚まで通す: 曲が 荒城の月→朧月夜→さくらさくら→山の魔王→月光→浜辺の歌 と曲の終わりで替わり、例外0（SPEC §4「曲が替わる夜」）。SHOTS= を付けると各曲の実画面を撮る
+  //    覗きとスクショは直列に回す（setInterval の evaluate と screenshot を重ねると CDP が詰まって 180 秒で落ちた・2026-09-02）
+  if (!ONLY || ONLY === "5") { const { browser, page, errors } = await open(base, "#autotest=620"); const shots = process.env.SHOTS; if (shots) fs.mkdirSync(shots, { recursive: true });
+    const seen = []; const shotDone = new Set(); let last = -1, s = null; const t0 = Date.now();
+    while (Date.now() - t0 < 480000) {
+      await sleep(200); try { s = await state(page); } catch (e) { errors.push("state: " + e.message); break; } const st = s.stats;
+      const snap = async (name) => { try { const d = await page.evaluate(() => document.getElementById("game").toDataURL("image/png")); fs.writeFileSync(path.join(shots, name), Buffer.from(d.split(",")[1], "base64")); } catch (e) { errors.push("snap: " + e.message); } };   // 盤（canvas）だけを直取り。page.screenshot は空の絵を入れたあと frame が外れて落ちた
+      if (st && st.stage !== last) { last = st.stage; seen.push([st.stage, st.rank, st.purified, st.song]); if (shots) { await sleep(1300); await snap(`stage-${st.stage}-rank${st.rank}.png`); } }
+      for (const mark of [24, 44, 140, 250, 360, 400, 470, 540, 600]) if (shots && st && st.purified >= mark && !shotDone.has(mark)) { shotDone.add(mark); await snap(`at-${mark}.png`); }   // 曲の途中の空（月が浮かぶ・朧・桜・血月・還る月・明け）
+      if (s.over) break;
+    }
+    const ranks = seen.map((x) => x[1]).join("→"), songs = seen.map((x) => x[3]).join("→");
+    check("延長620枚まで通り、曲の終わりで6曲が順に替わる・例外0", !!s && s.over && +s.floors >= 600 && songs === "荒城の月→朧月夜→さくらさくら→山の魔王→月光→浜辺の歌" && ranks === "06→08→09→10→10→10" && errors.length === 0, { floors: s && s.floors, 曲の推移: songs, 段の推移: ranks, 切り替わった枚数: seen.map((x) => x[2] + x[3]), 通し秒: +((Date.now() - t0) / 1000).toFixed(1), errors });
+    await browser.close(); }
   srv.close(); process.exit(failed ? 1 : 0);
 })();
