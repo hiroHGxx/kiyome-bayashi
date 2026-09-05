@@ -1,15 +1,91 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>浄めばやし OGP</title>
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>浄めばやし OGP</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@700;800&display=swap">
 <style>
-  /* 撮り方: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --disable-gpu --hide-scrollbars
-     --force-device-scale-factor=2 --window-size=1200,600 --screenshot=ogp.png scripts/ogp-card.html  → 1200×600（2:1） */
-  html,body{margin:0;width:1200px;height:600px;background:#131320;color:#E8E4D8;font-family:"Shippori Mincho B1",serif;overflow:hidden}
-  .card{position:absolute;inset:40px;border:2px solid #B89B5A;border-radius:10px;box-shadow:0 0 0 6px #131320,0 0 0 8px #6D5A33;display:flex;align-items:center;gap:48px;padding:48px}
-  .art{width:340px;height:510px;border-radius:4px;border:2px solid #B89B5A;background:#1B1B2E center/cover no-repeat}
-  h1{margin:0 0 12px;font-size:84px;letter-spacing:.12em;font-weight:800;color:#F0CE7E}
-  .sub{font-size:26px;letter-spacing:.14em;color:#9D93B5}
-  .lead{margin-top:28px;font-size:30px;line-height:1.7}
-</style></head><body>
-<div class="card"><div class="art" style="background-image:url(../assets/art/key.webp)"></div>
-<div><h1>浄めばやし</h1><div class="sub">— 月蝕綺譚 -Luna Occulta- 二次創作 —</div><div class="lead">（一行で遊びの芯）</div></div></div>
-</body></html>
+  /* 1200×600（2:1）OGP カード。**看板は「盤そのもの」**——この作の芯は「四筋を落ちる闇の札を、
+     下から順に叩く」。宣伝用に別の絵を描かず、実際に出る盤（空の絵＋額装＋札）を 0.725 倍で組み直した。
+     一行に札は二枚だけ（SPEC §2「一対」）＝半分は空が見える、という本物の見え方をそのまま出す。
+     書き出し:
+       "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new \
+         --disable-gpu --hide-scrollbars --force-device-scale-factor=2 \
+         --window-size=1200,600 --screenshot=ogp.png scripts/ogp-card.html
+     色は data/design-tokens.json の系（宵闇藍 #131320/#1B1B2E・金泥 #D9A94C/#F0CE7E・墨 #E8E4D8・補助 #9D93B5）。
+     新しい色を発明しない。#7C7396 は使わない。 */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1200px; height: 600px; overflow: hidden; position: relative;
+    font-family: "Shippori Mincho B1", "Hiragino Mincho ProN", "Yu Mincho", serif;
+    color: #E8E4D8;
+    background: radial-gradient(ellipse at 78% 46%, #1B1B2E 0%, #131320 64%);
+  }
+
+  /* ---- 盤（本体の 480×720 を 0.725 倍。筋幅120→87・行高180→130.5） ---- */
+  .board {
+    position: absolute; right: 58px; top: 39px; width: 348px; height: 522px;
+    border-radius: 10px; overflow: hidden; isolation: isolate;
+    border: 2px solid #6D5A33; box-shadow: 0 18px 44px rgba(0,0,0,.72);
+    background: #131320;
+  }
+  .board .layer { position: absolute; inset: 0; }
+  .bg { background: url("../assets/art/sky/bg_kojo.webp") center/cover no-repeat; opacity: .9; }
+  /* 月は一枚絵（黒地）を lighter で載せる＝本体と同じ。中心 (240,250) r128 を 0.725 倍 */
+  .moon {
+    position: absolute; left: 81px; top: 88px; width: 186px; height: 186px;
+    background: url("../assets/art/sky/moon.webp") center/contain no-repeat;
+    mix-blend-mode: screen;
+  }
+  .frame { background: url("../assets/art/sky/frame.webp") center/cover no-repeat; mix-blend-mode: screen; opacity: .9; }
+
+  .fuda { position: absolute; width: 87px; height: 130.5px; background: #1B1B2E center/cover no-repeat; }
+  /* 闇の札の金枠（本体: 6px の金泥＋内側 2px の暗線。0.725 倍で 4.4/1.5） */
+  .fuda.dark::after {
+    content: ""; position: absolute; inset: 0;
+    box-shadow: inset 0 0 0 4.4px #D9A94C, inset 0 0 0 5.9px #131320;
+  }
+  .l0 { left: 0; } .l1 { left: 87px; } .l2 { left: 174px; } .l3 { left: 261px; }
+  .r0 { top: 0; } .r1 { top: 130.5px; } .r2 { top: 261px; } .r3 { top: 391.5px; }
+
+  /* ---- 文字 ---- */
+  .content { position: absolute; left: 74px; top: 138px; }
+  h1 {
+    font-size: 100px; font-weight: 800; letter-spacing: .14em; line-height: 1.1; white-space: nowrap;
+    background: linear-gradient(168deg, #f6e5ae 15%, #D9A94C 55%, #F0CE7E 85%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 0 26px rgba(240,206,126,.4)) drop-shadow(0 3px 10px rgba(0,0,0,.7));
+  }
+  .tagline { margin-top: 28px; font-size: 26px; letter-spacing: .11em; line-height: 1.85; white-space: nowrap; text-shadow: 0 1px 8px rgba(0,0,0,.85); }
+  .tagline .dim { color: #C9C2D8; }
+  .note { margin-top: 20px; font-size: 21px; letter-spacing: .11em; color: #9D93B5; white-space: nowrap; }
+  .credit { position: absolute; left: 76px; bottom: 46px; font-size: 18px; letter-spacing: .12em; color: #9D93B5; white-space: nowrap; }
+</style>
+</head>
+<body>
+  <div class="board">
+    <div class="layer bg"></div>
+    <div class="moon"></div>
+    <div class="layer frame"></div>
+    <!-- 一行に闇一枚・色一枚（本体の spawnRow と同じ「一対」。闇と色は隣り合わせない） -->
+    <div class="fuda dark l1 r0" style="background-image:url('../assets/art/fuda/izuna_03.webp')"></div>
+    <div class="fuda      l3 r0" style="background-image:url('../assets/art/fuda/sakuya_06.webp')"></div>
+    <div class="fuda dark l3 r1" style="background-image:url('../assets/art/fuda/anne_03.webp')"></div>
+    <div class="fuda      l0 r1" style="background-image:url('../assets/art/fuda/benten_06.webp')"></div>
+    <div class="fuda dark l0 r2" style="background-image:url('../assets/art/fuda/karma_03.webp')"></div>
+    <div class="fuda      l2 r2" style="background-image:url('../assets/art/fuda/nemu_06.webp')"></div>
+    <div class="fuda dark l2 r3" style="background-image:url('../assets/art/fuda/magoichi_03.webp')"></div>
+    <div class="fuda      l0 r3" style="background-image:url('../assets/art/fuda/uka_06.webp')"></div>
+  </div>
+
+  <div class="content">
+    <h1>浄めばやし</h1>
+    <div class="tagline">
+      四筋を落ちる闇の札を、下から順に叩く<br>
+      <span class="dim">叩くたび、琴が名曲を一音ずつ継いでゆく</span>
+    </div>
+    <div class="note">ワンタップ・終わりの無い夜</div>
+  </div>
+  <div class="credit">月蝕綺譚 -Luna Occulta- 二次創作ファンゲーム</div>
+</body>
+</html>
