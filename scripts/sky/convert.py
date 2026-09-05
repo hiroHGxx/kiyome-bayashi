@@ -22,7 +22,7 @@ for key in ["bg_kojo","bg_oboro","bg_sakura","bg_gekko","bg_hamabe"]:
     if im is None: report.append(f"{key}: (no image)"); continue
     out=OUT/f"{key}.webp"; cover(im,480,720).save(out,"WEBP",quality=80,method=6); report.append(f"{key}: {im.size} -> {out.stat().st_size//1024}KB")
 # 血月＝御霊おとしの eclipse.jpg（Lovart 生成済み）の上部を流用
-ec=Image.open("/Users/USER/Documents/user/kitan-circle/kitan-works/mitama-otoshi/assets/art/eclipse.jpg").convert("RGB").crop((0,0,900,880))
+ec=Image.open(pathlib.Path(__file__).resolve().parents[3]/"mitama-otoshi/assets/art/eclipse.jpg").convert("RGB").crop((0,0,900,880))
 out=OUT/"bg_eclipse.webp"; cover(ec,480,720).save(out,"WEBP",quality=80,method=6); report.append(f"bg_eclipse: reuse mitama-otoshi eclipse.jpg -> {out.stat().st_size//1024}KB")
 m=latest("moon")
 if m is not None:
