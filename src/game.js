@@ -146,7 +146,7 @@
   let prevBg = null;                // 前の曲の背景。次の曲の一巡目で p に従って入れ替わる
   // 検証用の覗き口（読むだけ）。ids は「同じ柱が盤に二度出ていないか」を数える。
   // lane は最下段の未浄の筋＝機械に手で遊ばせて実写真を撮るため（自動プレイは番付の行が出ないので画が撮れない）
-  window.__stats = () => ({ purified, pillars: litSet ? litSet.size : 0, switchAt, over, stage, rank: colorRank(), song: SONGS[stage].name, songStep, lane: (lowestUncleared() || {}).darkLane, ids: rows.flatMap((r) => [r.darkId, r.colorId]) });
+  window.__stats = () => ({ purified, pillars: litSet ? litSet.size : 0, switchAt, over, stage, rank: colorRank(), song: SONGS[stage].name, songStep, lane: (lowestUncleared() || {}).darkLane, y: (lowestUncleared() || {}).y, ids: rows.flatMap((r) => [r.darkId, r.colorId]) });
 
   const shuffled = () => { const a = SPIRITS.map((s) => s.id); for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; const t = a[i]; a[i] = a[j]; a[j] = t; } return a; };
   const liveIds = () => { const v = new Set(); for (const r of rows) { v.add(r.darkId); v.add(r.colorId); } return v; };
