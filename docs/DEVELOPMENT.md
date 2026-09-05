@@ -379,3 +379,24 @@ Claude Artifact に出した: https://claude.ai/code/artifact/ba79a383-adbe-4c1f
 - **一枚絵を敷いたら、その上に残る図形の線を全部疑う**（筋の境の1px線が満月を縦に横切っていた）
 - **叩く盤の上を横切る演出は入れない**（節目の一斉染めは「ミスしそうになった」で撤去）
 - **月は上に置くと札に隠れる。**演出の置き場は「空いている所」でなく「隙間から見える大きさ」で決める
+
+---
+
+## 2026-09-05 公開（GitHub → Pages）
+
+**https://hirohgxx.github.io/kiyome-bayashi/ で公開した。**リポジトリは
+`hiroHGxx/kiyome-bayashi`（public・homepage 欄も埋めた）。`docs/RELEASE.md` §2 の順どおり。
+
+- 出す前に**追跡ファイル全体を検めた**（Pages は `scripts/` も `docs/` も配信するため）。
+  手元の絶対パス・APIキーの混入なし。追跡 31MB のうち 26MB は目付の写真（`docs/ut/`）
+- Pages 有効化から **20秒で200**。配信された `index.html` は手元のビルドと **sha256 一致**（69,846 bytes）
+- OGP: `ogp.png?v=1` が 200・`image/png`・1.36MB。**Twitterbot のUAで引いて** og:title／og:description／
+  og:image／og:url／twitter:card=summary_large_image／twitter:image がすべて返ることを確認
+- **iframe を妨げるヘッダーは無し**（わいわいタウンの枠で読める）
+- 素材は音9・空8＋題字・札絵の抜き取りで28件すべて200。札絵は145枚すべて追跡されている
+- **実物で遊べることまで見た**（Pages のURLに対して10枚浄める・例外0・盤が描かれている）。
+  この検めでも わいわいタウンへの通信は遮断している（本番の番付を汚さない）
+
+**残り: わいわいタウン掲載（D0）→ X告知（D+2・オーナーが押す）。**
+掲載にはサムネ（640×640）とプレビュー動画が要る。素材は 09-05 に撮った実プレイの静止画6枚
+（`scripts/pv/shots/`・撮り直しは `scripts/shots.js`）が使える。
