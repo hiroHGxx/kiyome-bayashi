@@ -446,6 +446,10 @@ Claude Artifact に出した: https://claude.ai/code/artifact/ba79a383-adbe-4c1f
   権利の節に「**編曲者の没年も見る**」を追加）／`scripts/melody/README.md`（版の説明）。
   `scripts/melody/kojo_score.json` は**譜に何が書いてあったかの記録なので書き換えない**（差は game.js 側の1音だけ）
 - **検査**: `playtest.js` 9件緑（曲の切り替わりも 96/218/318/453/597 で以前と同値）・`kitan-precheck` ✓33 ✗0 △1
+- **素材の撮り直し**: PV とチラ見せは**実際の走りの音をそのまま録ったもの**なので、あの1音が入ったままだった。
+  同じ台本で録り直した（新旧の録りは音の時計で40ms以内に一致＝`assemble.sh` の切り出し点はそのまま使えた）。
+  `media/` の3本すべてを作り直し、尺・寸法は従来どおり（PV 27.70秒／チラ見せ 10.20秒／掲載プレビュー 12.77秒・無音）。
+  サムネは静止画なので据え置き。`dist/artifact.html` も焼き直して**同じ Artifact に更新**した
 - **次に効く教訓**: **「版権が切れている」を作曲者の没年だけで判定しない。編曲者の没年も見る。**
   人の楽譜データから譜を取るときは、**その譜が誰の版か**を出どころと一緒に控える
 
@@ -454,9 +458,17 @@ Claude Artifact に出した: https://claude.ai/code/artifact/ba79a383-adbe-4c1f
 素材の元（screencast のコマと音）は**この会話の作業場に置いたので消える**。撮り直しは台本が残っているので4〜5分:
 
     NODE_PATH=../shikifuda-kasane/node_modules node scripts/pv/capture-pv.js <出力先>   # 血月まで約200秒
+    bash scripts/pv/frames2mp4.sh <出力先>                                              # 窓の連番コマ → w*.mp4
     NODE_PATH=../shikifuda-kasane/node_modules node scripts/pv/capture-open.js scripts/pv/opening.png
     NODE_PATH=../shikifuda-kasane/node_modules node scripts/pv/make-cards.js
     bash scripts/pv/make-preview.sh <出力先> ; bash scripts/pv/assemble.sh <出力先> ; bash scripts/pv/make-teaser.sh <出力先>
+
+**台本に欠けていた2つ（2026-09-08 の撮り直しで判明・1つは埋めた）**:
+- `capture-pv.js` が置くのは `<窓>/f####.jpg` ＋ 可変尺の `list.txt` で、`assemble.sh` が読む `<窓>.mp4` は
+  **どの台本も作っていなかった**（前回は手作業）。`scripts/pv/frames2mp4.sh` として足した
+- `assemble.sh` の S5「札絵の総見せ」が読む `<出力先>/m_1.png`〜`m_5.png`（弁天・宇迦・ネム・咲耶・大蛇の
+  720×1280）を**作る台本がまだ無い**。今回は前回の作業場に残っていたものを写して通した。
+  音や画面が変わっても中身は変わらない静止画なので、**次に撮り直すときは `media/` の隣にでも控えを置くこと**
 
 **PVは画面の写し。画面を変えたら告記の前に撮り直す**（MEDIA.md）。
 
